@@ -13,8 +13,8 @@ import os.path as osp
 from typing import Any, Callable, cast, Dict, List, Optional, Tuple, Union
 from PIL import Image
 
-from POFCAM_utils import frame_utils, torch_utils
-from POFCAM_utils.augment_utils import *
+from POF_CAM.POFCAM_utils import frame_utils, torch_utils
+from POF_CAM.POFCAM_utils.augment_utils import *
 from imageio import imread
 
 from torchvision import transforms
