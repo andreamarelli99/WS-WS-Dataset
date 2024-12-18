@@ -10,6 +10,8 @@ import torch.nn.functional as F
 from glob import glob
 import os.path as osp
 
+from torch.utils.data import DataLoader
+
 from typing import Any, Callable, cast, Dict, List, Optional, Tuple, Union
 from PIL import Image
 
@@ -45,7 +47,6 @@ class Iterator:
         return data
 
 
-
 class CombinedDataset(data.Dataset):
     def __init__(self, datasets):
         self.datasets = datasets
@@ -67,9 +68,6 @@ class CombinedDataset(data.Dataset):
     def __add__(self, other):
         self.datasets.append(other)
         return self
-    
-
-
 
 
 class CamFlowDataset(data.Dataset):
@@ -77,8 +75,9 @@ class CamFlowDataset(data.Dataset):
                  loader: Callable[[str], Any],
                  transform: Optional[Callable] = None,
                  augment = False,
-                 return_path= False, 
-                 return_img_path= False):
+                 return_path = False, 
+                 return_img_path=  False,
+                 with_flow = False):
 
         self.return_path = return_path
         self.return_img_path = return_img_path
@@ -91,6 +90,7 @@ class CamFlowDataset(data.Dataset):
         self.image_list = []
         self.flow_list = []
         self.label_list = []
+        self.with_flows = with_flow
 
     def get_image(self, image_path):
         image = Image.open(image_path).convert('RGB')
@@ -104,55 +104,68 @@ class CamFlowDataset(data.Dataset):
         
         index = index % len(self.image_list)
 
-        img1 = frame_utils.read_gen(self.image_list[index][0])
-        img2 = frame_utils.read_gen(self.image_list[index][1])
-        img3 = frame_utils.read_gen(self.image_list[index][2])
+        if self.with_flows:
 
-        flow1 = frame_utils.read_gen(self.flow_list[index][0])
-        flow2 = frame_utils.read_gen(self.flow_list[index][1])
+            img1 = frame_utils.read_gen(self.image_list[index][0])
+            img2 = frame_utils.read_gen(self.image_list[index][1])
+            img3 = frame_utils.read_gen(self.image_list[index][2])
 
-        flow1 = -np.array(flow1).astype(np.float32)
-        flow2 = np.array(flow2).astype(np.float32)
-        
-        flow1 = torch.from_numpy(flow1).permute(2, 0, 1).float()
-        flow2 = torch.from_numpy(flow2).permute(2, 0, 1).float()
+            flow1 = frame_utils.read_gen(self.flow_list[index][0])
+            flow2 = frame_utils.read_gen(self.flow_list[index][1])
 
-        
-        label = torch_utils.one_hot_embedding(self.class_dic[self.label_list[index]], self.classes)
-        
-
-        if self.augment:
-
-            horizontal_flips = []
-            vertical_flips = []
-            rotation_degrees = []
-
-            for i in range (3):
-
-                horizontal_flips.append(random.getrandbits(1))
-                vertical_flips.append(random.getrandbits(1))
-                rotation_degrees.append(random.randint(-90,90))
-
-            params = [horizontal_flips, vertical_flips, rotation_degrees]
+            flow1 = -np.array(flow1).astype(np.float32)
+            flow2 = np.array(flow2).astype(np.float32)
             
-            
-            stored_transform = Three_images_trasform(params)
-            img1, img2, img3 = stored_transform([img1, img2, img3])
+            flow1 = torch.from_numpy(flow1).permute(2, 0, 1).float()
+            flow2 = torch.from_numpy(flow2).permute(2, 0, 1).float()
 
-            img1 = self.transform(img1)
-            img2 = self.transform(img2)
-            img3 = self.transform(img3)
-
-            return [img1, img2, img3], [flow1, flow2], label, params
         
+            label = torch_utils.one_hot_embedding(self.class_dic[self.label_list[index]], self.classes)
+        
+
+            if self.augment:
+
+                horizontal_flips = []
+                vertical_flips = []
+                rotation_degrees = []
+
+                for i in range (3):
+
+                    horizontal_flips.append(random.getrandbits(1))
+                    vertical_flips.append(random.getrandbits(1))
+                    rotation_degrees.append(random.randint(-90,90))
+
+                params = [horizontal_flips, vertical_flips, rotation_degrees]
+                
+                
+                stored_transform = Three_images_trasform(params)
+                img1, img2, img3 = stored_transform([img1, img2, img3])
+
+                img1 = self.transform(img1)
+                img2 = self.transform(img2)
+                img3 = self.transform(img3)
+
+                return [img1, img2, img3], [flow1, flow2], label, params
+        
+        
+            else:
+
+                img1 = self.transform(img1)
+                img2 = self.transform(img2)
+                img3 = self.transform(img3)
+
+                return [img1, img2, img3], [flow1, flow2], label
         
         else:
 
-            img1 = self.transform(img1)
-            img2 = self.transform(img2)
-            img3 = self.transform(img3)
+            img = frame_utils.read_gen(self.image_list[index][1])
 
-            return [img1, img2, img3], [flow1, flow2], label
+            if self.transform is not None:
+                img = self.transform(img)
+
+            label = torch_utils.one_hot_embedding(self.class_dic[self.label_list[index]], self.classes)
+            
+            return img, label
 
 
     def __len__(self):
@@ -161,6 +174,14 @@ class CamFlowDataset(data.Dataset):
     def __add(self, other):
         return CombinedDataset([self, other])
 
+    def do_it_with_flows(self):
+        self.with_flows = True
+    
+    def do_it_without_flows(self):
+        self.with_flows = False
+
+    def get_whith_flows_bool(self):
+        return self.with_flows
 
 
 class Seruso_three_classes_flow(CamFlowDataset):
@@ -228,107 +249,6 @@ class Seruso_three_classes_flow(CamFlowDataset):
             self.image_list.append([im1, im2, im3])
             self.flow_list.append([flo1, flo2])
             self.label_list.append(label_name)
-
-
-
-
-
-class CamFolderDataset(data.Dataset):
-    def __init__(self,
-                 loader: Callable[[str], Any],
-                 transform: Optional[Callable] = None):
-        
-        self.transform = transform
-        self.loader = loader
-        
-        self.image_list = []
-        self.label_list = []
-
-    def get_image(self, image_path):
-        image = Image.open(image_path).convert('RGB')
-        return image
-
-    def __getitem__(self, index):
-
-        np.random.seed()
-
-        if index!=(index % len(self.image_list)): assert NotImplementedError
-        
-        index = index % len(self.image_list)
-
-        img = frame_utils.read_gen(self.image_list[index])
-                                    
-
-        if self.transform is not None:
-            img = self.transform(img)
-
-        label = torch_utils.one_hot_embedding(self.class_dic[self.label_list[index]], self.classes)
-         
-        return img, label
-
-    def __len__(self):
-        return len(self.image_list)
-
-    def __add(self, other):
-        return CombinedDataset([self, other])
-
-
-
-class Seruso_three_classes(CamFolderDataset):
-    def __init__(self, 
-                 img_root = '../../../../Datasets/SERUSO_DATASETS/main_dataset/Before_after_no_backgrounds/',
-                 transform: Optional[Callable] = None,
-                 loader: Callable[[str], Any] = pil_loader,):
-        super(Seruso_three_classes, self).__init__(transform = transform, loader = loader)
-
-        self.img_root = img_root
-
-        assert(os.path.isdir(os.path.join(self.img_root)))
-
-        images = []
-        self.class_names = []
-        self.class_dic = {}
-
-        for subfolder in sorted(os.listdir(os.path.join(img_root))):
-
-            for class_name in sorted(os.listdir(os.path.join(img_root, subfolder))):
-
-                if class_name not in self.class_names:
-                
-                    self.class_names.append(class_name)
-                    self.class_dic[class_name] = len(self.class_dic)
-
-                for rel_frame_dir in sorted(glob(os.path.join(img_root, subfolder, class_name,'*','*.jpg'))):
-                        
-                    rel_frame_dir = os.path.relpath(rel_frame_dir,os.path.join(img_root, '*', class_name))
-                    scene_dir, filename = os.path.split(rel_frame_dir)
-                    no_ext_filename = os.path.splitext(filename)[0]
-                    prefix, frame_nb = no_ext_filename.split('_')
-                    frame_nb = int(frame_nb)
-                    img = os.path.join(subfolder, class_name, scene_dir, '{}_{:04d}.jpg'.format(prefix, frame_nb))
-
-                    if (os.path.isfile(os.path.join(img_root,img))):
-                        images.append([img, class_name])
-        
-        self.classes = len(self.class_dic)
-
-        # Use split2list just to ensure the same data structure; actually we do not split here
-        tbd_list, _ = split2list(images, split=1.1, default_split=1.1,order=True)
-
-        self.image_list = []
-        self.label_list = []
-
-        for i in range(len(tbd_list)):
-
-            im1 = os.path.join(img_root,tbd_list[i][0])
-
-            label_name = tbd_list[i][1]
-
-            self.image_list.append(im1)
-            self.label_list.append(label_name)
-
-
-
 
 
 class SerusoTestDataset(CamFlowDataset):
@@ -438,94 +358,6 @@ class SerusoTestDataset(CamFlowDataset):
         return [img1, img2, img3], [flow1, flow2], [mask1, mask2, mask3]
 
 
-
-
-class LabeledDataset(data.Dataset):
-    def __init__(self,
-                 img_root = '../../../../Datasets/SERUSO_DATASETS/main_dataset/Labels/',
-                 classes_subfolders = ['before', 'after'],
-                 transform: Optional[Callable] = None,
-                 loader: Callable[[str], Any] = pil_loader):
-    
-        self.transform = transform
-        self.loader = loader
-        
-        self.image_list = []
-        self.masks_list = []
-
-        self.img_root = img_root
-
-        assert(os.path.isdir(os.path.join(self.img_root)))
-
-        images = []
-
-        for class_subf in classes_subfolders:
-
-            for rel_frame_dir in sorted(glob(os.path.join(img_root, 'images', class_subf, '*.jpg'))):
-
-                rel_frame_dir = os.path.relpath(rel_frame_dir, os.path.join(img_root, '*'))
-
-                class_dir, filename = os.path.split(rel_frame_dir)
-
-                if class_subf in class_dir:
-                    img = os.path.join('images', class_subf, filename)
-                    mask = os.path.join('masks', class_subf, filename)
-
-                    if (os.path.isfile(os.path.join(img_root,img))):
-                        images.append([img, mask])
-
-
-
-        # Use split2list just to ensure the same data structure; actually we do not split here
-        tbd_list, _ = split2list(images, split=1.1, default_split=1.1,order=True)
-
-        self.image_list = []
-        self.label_list = []
-
-        for i in range(len(tbd_list)):
-
-            img = os.path.join(img_root, tbd_list[i][0])
-            mask = os.path.join(img_root, tbd_list[i][1])
-
-            self.image_list.append(img)
-            self.masks_list.append(mask)
-
-
-    def get_mask(self, mask_path):
-
-        mask = Image.open(mask_path).convert("L")
-
-        return mask
-    
-
-    def __getitem__(self, index):
-
-        np.random.seed()
-
-        if index!=(index % len(self.image_list)): assert NotImplementedError
-        
-        index = index % len(self.image_list)
-
-        img = frame_utils.read_gen(self.image_list[index])
-        mask = self.get_mask(self.masks_list[index])
-                                    
-        if self.transform is not None:
-            img = self.transform(img)
-            mask = self.transform(mask)
-         
-        return img, mask
-
-    def __len__(self):
-        return len(self.image_list)
-
-    def __add(self, other):
-        return CombinedDataset([self, other])
-
-
-
-
-
-
 def split2list(images, split, default_split=1.1,order = False):
     if isinstance(split, str):
         with open(split) as f:
@@ -552,3 +384,4 @@ def split2list(images, split, default_split=1.1,order = False):
     test_samples = [sample for sample, split in zip(images, split_values) if not split]
     
     return train_samples, test_samples
+

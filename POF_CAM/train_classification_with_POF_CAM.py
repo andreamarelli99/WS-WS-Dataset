@@ -38,6 +38,9 @@ class POF_CAM:
         self.train_loader = train_loader
         self.validation_loader = validation_loader
 
+        self.train_loader.dataset.do_it_with_flows()
+        self.validation_loader.dataset.do_it_with_flows()
+
         # Class names (assuming the data loader datasets provide access to class names)
         self.class_names = np.asarray(train_loader.dataset.class_names)
 
@@ -539,6 +542,9 @@ class POF_CAM:
                 self.writer.add_scalar('Evaluation/best_val_loss', best_val_loss, iteration)
 
         self.writer.close()
+
+        self.train_loader.dataset.do_it_without_flows()
+        self.validation_loader.dataset.do_it_without_flows()
 
         train_losses = {
             'Total Loss': losses,

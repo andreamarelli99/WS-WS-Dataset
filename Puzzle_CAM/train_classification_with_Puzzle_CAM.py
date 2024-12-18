@@ -40,7 +40,6 @@ class Puzzle_CAM:
         # Class names (assuming the data loader datasets provide access to class names)
         self.class_names = np.asarray(train_loader.dataset.class_names)
 
-        self.level = 'cam'
         self.tag = f"Puzzle_CAM_seruso_{self.image_size}_no_bg_three_classes_{self.max_epoch}_epochs_{self.architecture}_batch{self.batch_size}_{self.loss_option}_{self.re_loss_option}_only_lateral_{self.num_pieces}_pieces_new_dataset_alpha_{self.glob_alpha}_{self.alpha_schedule}"
 
         set_seed(self.seed)
@@ -49,11 +48,11 @@ class Puzzle_CAM:
         
 
     def set_log (self):
-        self.log_dir = create_directory(f'./experiments/POF-CAM/logs/')
-        self.data_dir = create_directory(f'./experiments/POF-CAM/data/')
-        self.model_dir = create_directory(f'./experiments/POF-CAM/models/')
-        self.plot_dir = create_directory(f'./experiments/POF-CAM/plots/')
-        self.tensorboard_dir = create_directory(f'./experiments/POF-CAM/tensorboards/{ self.tag}/')
+        self.log_dir = create_directory(f'./experiments/Puzzle-CAM/logs/')
+        self.data_dir = create_directory(f'./experiments/Puzzle-CAM/data/')
+        self.model_dir = create_directory(f'./experiments/Puzzle-CAM/models/')
+        self.plot_dir = create_directory(f'./experiments/Puzzle-CAM/plots/')
+        self.tensorboard_dir = create_directory(f'./experiments/Puzzle-CAM/tensorboards/{ self.tag}/')
 
         self.log_path = self.log_dir + f'{self.tag}.txt'
         self.data_path = self.data_dir + f'{self.tag}.json'
@@ -162,28 +161,21 @@ class Puzzle_CAM:
 
         with torch.no_grad():
             length = len(loader)
-            for step, (images_lists, flows_lists, labels) in enumerate(loader):
+            for step, (images, labels) in enumerate(loader):
 
-                labels =  labels.cuda()
-
-                flows_left, flows_right = flows_lists
-
-                middle = len(images_lists)//2
-
-                central_images = images_lists [middle].cuda()
-                left_images = images_lists [middle-1].cuda()
-                right_images = images_lists [middle + 1].cuda()
+                images = images.cuda()
+                labels = labels.cuda()
 
                 ###############################################################################
                 # Normal
                 ###############################################################################
-                logits, features_puzz = self.model(central_images, with_cam=True)
+                logits, features_puzz = self.model(images, with_cam=True)
 
                 ###############################################################################
                 # Puzzle Module
                 ###############################################################################
 
-                tiled_images = tile_features(central_images, self.num_pieces)
+                tiled_images = tile_features(images, self.num_pieces)
 
                 tiled_logits, tiled_features = self.model(tiled_images, with_cam=True)
 
@@ -192,6 +184,11 @@ class Puzzle_CAM:
                 ###############################################################################
                 # Losses
                 ###############################################################################
+                
+                if self.level == 'cam':
+                    features = make_cam(features)
+                    re_features = make_cam(re_features)
+
                 if 'cl' in self.loss_option:
                     class_loss = self.class_loss_fn(logits, labels).mean()
                 else:
@@ -226,7 +223,12 @@ class Puzzle_CAM:
                 else:
                     re_loss_puzz = torch.zeros(1).cuda()
 
-                loss = class_loss + p_class_loss + alpha*re_loss_puzz
+                if 'conf' in self.loss_option:
+                    conf_loss = shannon_entropy_loss(tiled_logits)
+                else:
+                    conf_loss = torch.zeros(1).cuda()
+
+                loss = class_loss + p_class_loss + alpha*re_loss_puzz + conf_loss
                 #################################################################################################
 
                 val_losses.append(loss.item())
@@ -261,28 +263,19 @@ class Puzzle_CAM:
 
         for iteration in range(self.max_iteration):
 
-            images_lists, flows_lists, labels = self.train_iterator.get() # images_lists, flows_lists, labels, params = train_iterator.get()
-
-            labels =  labels.cuda()
-
-            flows_left, flows_right = flows_lists
-
-            middle = len(images_lists)//2
-
-            central_images = images_lists [middle].cuda()
-            left_images = images_lists [middle-1].cuda()
-            right_images = images_lists [middle + 1].cuda()
+            images, labels = self.train_iterator.get()
+            images, labels = images.cuda(), labels.cuda()
 
             ###############################################################################
             # Normal
             ###############################################################################
-            logits, features_puzz = self.model(central_images, with_cam=True)
+            logits, features_puzz = self.model(images, with_cam=True)
 
             ###############################################################################
             # Puzzle Module
             ###############################################################################
 
-            tiled_images = tile_features(central_images, self.num_pieces)
+            tiled_images = tile_features(images, self.num_pieces)
 
             tiled_logits, tiled_features = self.model(tiled_images, with_cam=True)
 
@@ -291,6 +284,11 @@ class Puzzle_CAM:
             ###############################################################################
             # Losses
             ###############################################################################
+            
+            if self.level == 'cam':
+                features = make_cam(features)
+                re_features = make_cam(re_features)
+
             if 'cl' in self.loss_option:
                 class_loss = self.class_loss_fn(logits, labels).mean()
             else:
@@ -300,7 +298,6 @@ class Puzzle_CAM:
 
             if 'pcl' in self.loss_option:        
                 p_class_loss = self.class_loss_fn(self.gap_fn(re_features_puzz), labels).mean()
-
             else:
                 p_class_loss = torch.zeros(1).cuda()
 
@@ -327,6 +324,11 @@ class Puzzle_CAM:
                     re_loss_puzz = self.re_loss_fn(features_puzz, re_features_puzz).mean()
             else:
                 re_loss_puzz = torch.zeros(1).cuda()
+                    
+            if 'conf' in self.loss_option:
+                conf_loss = shannon_entropy_loss(tiled_logits)
+            else:
+                conf_loss = torch.zeros(1).cuda()
 
             if self.alpha_schedule == 0.0:
                 alpha = self.glob_alpha
@@ -334,7 +336,7 @@ class Puzzle_CAM:
                 alpha = min(self.glob_alpha * (iteration) / (self.max_iteration * self.alpha_schedule), self.glob_alpha)
 
 
-            loss = class_loss + p_class_loss + alpha*re_loss_puzz
+            loss = class_loss + p_class_loss + alpha*re_loss_puzz + conf_loss
             #################################################################################################
 
             temp_losses.append(loss.item())

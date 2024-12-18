@@ -45,8 +45,9 @@ config = {
     'loss_option': 'cl_re',
     'imagenet_mean': [0.485, 0.456, 0.406],
     'imagenet_std': [0.229, 0.224, 0.225],
-    'level' : 'cam'
+    'level' : 'feature'  # 'feature'  'cam'
 }
+
 
 num_workers = 4
 
