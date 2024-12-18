@@ -13,7 +13,13 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 
 from POF_CAM.train_classification_with_POF_CAM import POF_CAM
-from POF_CAM.POFCAM_utils.augment_utils import *
+from Puzzle_CAM.train_classification_with_Puzzle_CAM import Puzzle_CAM
+from general_utils.augment_utils import *
+
+
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
 
 
 config = {
@@ -42,7 +48,6 @@ config = {
     'level' : 'cam'
 }
 
-# seed = 42
 num_workers = 4
 
 
@@ -52,33 +57,11 @@ flow_dir_main = '../../Datasets/SERUSO_DATASETS/main_dataset/optical_flows/' # m
 dataset_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/three_classes_5000/'
 flow_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/optical_flows_5000/'
 
-# architecture = 'resnet50'
-# mode ='normal' # fix
+
 batch_size = 16
-# max_epoch = 40
-# lr = 0.1
-# wd = 1e-4
-# nesterov = True
-image_size = 512 # 256
-# print_ratio = 0.1
+image_size = 512
+
 augment = 'colorjitter' #'colorjitter'
-
-
-# re_loss_option = 'masking'   # 'none', 'masking', 'selection'
-# re_loss = 'L1_Loss'          # 'L1_Loss', 'L2_Loss'
-# alpha_schedule = 0.0 # 0.50 
-# glob_alpha = 2.00
-
-# beta_schedule = 0.0
-# glob_beta = 6.00
-# num_pieces = 4 # For Puzzle-CAM
-# loss_option = 'cl_re'
-
-# 'cl_pcl'
-# 'cl_re'
-# 'cl_pcl_re'
-
-# level = 'cam'
 
 imagenet_mean = [0.485, 0.456, 0.406]
 imagenet_std = [0.229, 0.224, 0.225]
@@ -120,15 +103,8 @@ validation_loader = DataLoader(val_dataset, batch_size = batch_size, num_workers
 
 class_names = np.asarray(train_dataset.class_names)
 
-
-
 pof_cam = POF_CAM(config, train_loader, validation_loader)
-
 pof_cam.train()
 
-
-
-
-
-
-
+puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
+puzzle_cam.train()
