@@ -96,7 +96,7 @@ test_transform = transforms.Compose([
 # Remake the test tranform, right now using no augmentation
 
 train_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'training', transform = train_transform, augment = False)
-val_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'validation', transform = train_transform, augment = False)
+val_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'validation', transform = test_transform, augment = False)
 
 train_loader = DataLoader(train_dataset, batch_size = batch_size, num_workers = num_workers, shuffle=True, drop_last=True)
 validation_loader = DataLoader(val_dataset, batch_size = batch_size, num_workers = num_workers, shuffle=True, drop_last=True)

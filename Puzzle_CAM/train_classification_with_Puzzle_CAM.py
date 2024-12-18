@@ -141,7 +141,7 @@ class Puzzle_CAM:
         self.train_timer = Timer()
         self.eval_timer = Timer()
 
-        self.train_meter = Average_Meter(['loss', 'class_loss', 'p_class_loss', 're_loss', 're_loss_puzz', 'alpha'])
+        self.train_meter = Average_Meter(['loss', 'class_loss', 'p_class_loss', 're_loss_puzz', 'alpha'])
 
         self.writer = SummaryWriter(self.tensorboard_dir)
         self.train_iterator = seruso_datasets.Iterator(self.train_loader)
@@ -211,7 +211,6 @@ class Puzzle_CAM:
                         re_loss_puzz = re_loss_puzz.mean()
 
                     elif self.re_loss_option == 'selection':
-                        re_loss = 0.
                         for b_index in range(labels.size()[0]):
                             class_indices = labels[b_index].nonzero(as_tuple=True)
                     
@@ -220,13 +219,11 @@ class Puzzle_CAM:
                             re_loss_per_feature_puzz = self.re_loss_fn(selected_features_puzz, selected_re_features_puzz).mean()
                             re_loss_puzz += re_loss_per_feature_puzz
 
-                        re_loss /= labels.size()[0]
                         re_loss_puzz /= labels.size()[0]
 
                     else:
                         re_loss_puzz = self.re_loss_fn(features_puzz, re_features_puzz).mean()
                 else:
-                    re_loss = torch.zeros(1).cuda()
                     re_loss_puzz = torch.zeros(1).cuda()
 
                 loss = class_loss + p_class_loss + alpha*re_loss_puzz
@@ -316,7 +313,6 @@ class Puzzle_CAM:
 
 
                 elif self.re_loss_option == 'selection':
-                    re_loss = 0.
                     for b_index in range(labels.size()[0]):
                         class_indices = labels[b_index].nonzero(as_tuple=True)
                         
@@ -325,13 +321,11 @@ class Puzzle_CAM:
                         re_loss_per_feature_puzz = self.re_loss_fn(selected_features_puzz, selected_re_features_puzz).mean()
                         re_loss_puzz += re_loss_per_feature_puzz
 
-                    re_loss /= labels.size()[0]
                     re_loss_puzz /= labels.size()[0]
 
                 else:   
                     re_loss_puzz = self.re_loss_fn(features_puzz, re_features_puzz).mean()
             else:
-                re_loss = torch.zeros(1).cuda()
                 re_loss_puzz = torch.zeros(1).cuda()
 
             if self.alpha_schedule == 0.0:
@@ -364,7 +358,7 @@ class Puzzle_CAM:
             # For Log
             #################################################################################################
             if (iteration + 1) % self.log_iteration == 0:
-                loss, class_loss, p_class_loss, re_loss, re_loss_puzz, alpha = self.train_meter.get(clear=True)
+                loss, class_loss, p_class_loss, re_loss_puzz, alpha = self.train_meter.get(clear=True)
                 learning_rate = float(get_learning_rate_from_optimizer(self.optimizer))
 
                 data = {
@@ -374,7 +368,6 @@ class Puzzle_CAM:
                     'loss' : loss,
                     'class_loss' : class_loss,
                     'p_class_loss' : p_class_loss,
-                    're_loss' : re_loss,
                     're_loss_puzz' : re_loss_puzz,
                     'time' : self.train_timer.tok(clear=True),
                 }
@@ -387,7 +380,6 @@ class Puzzle_CAM:
                     loss={loss:.4f}, \
                     class_loss={class_loss:.4f}, \
                     p_class_loss={p_class_loss:.4f}, \
-                    re_loss={re_loss:.4f}, \
                     re_loss_puzz={re_loss_puzz:.4f}, \
                     time={time:.0f}sec'.format(**data)
                 )
@@ -412,10 +404,9 @@ class Puzzle_CAM:
                 temp_losses = []
                 temp_class_losses = []
                 temp_p_class_losses= []
-                temp_re_losses = []
                 temp_re_losses_puzz = []
 
-                val_losses, val_class_losses, val_p_class_losses, val_re_losses, val_re_losses_puzz = self.evaluate_for_validation(self.validation_loader, alpha)
+                val_losses, val_class_losses, val_p_class_losses, val_re_losses_puzz = self.evaluate_for_validation(self.validation_loader, alpha)
 
                 val_loss = np.mean(val_losses)
 
