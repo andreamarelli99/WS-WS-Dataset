@@ -18,6 +18,7 @@ class FixedBatchNorm(nn.BatchNorm2d):
 
 def group_norm(features):
     return nn.GroupNorm(4, features)
+
 #######################################################################
 
 
@@ -47,14 +48,14 @@ class Backbone(nn.Module, ABC_Model):
         
         else:
             if 'resnet' in model_name:
-                self.model = resnet.ResNet(resnet.Bottleneck, resnet.layers_dic[model_name], strides=(2, 2, 2, 1), batch_norm_fn=self.norm_fn)
+                self.model = resnet.ResNet(resnet.Bottleneck, resnet.layers_dic[model_name], strides=(2, 2, 2, 2), batch_norm_fn=self.norm_fn)   # strides=(2, 2, 2, 2)
 
                 state_dict = model_zoo.load_url(resnet.urls_dic[model_name])
                 state_dict.pop('fc.weight')
                 state_dict.pop('fc.bias')
                 
-
                 self.model.load_state_dict(state_dict)
+
             else:
                 if segmentation:
                     dilation, dilated = 4, True

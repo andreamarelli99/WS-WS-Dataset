@@ -27,6 +27,7 @@ class ABC_Model(ABC):
 
         for name, value in self.named_parameters():
             # pretrained weights
+
             if 'model' in name:
                 if 'weight' in name:
                     # print_fn(f'pretrained weights : {name}')

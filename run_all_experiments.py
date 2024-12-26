@@ -12,9 +12,11 @@ import seruso_datasets
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
+from general_utils.augment_utils import *
+
 from POF_CAM.train_classification_with_POF_CAM import POF_CAM
 from Puzzle_CAM.train_classification_with_Puzzle_CAM import Puzzle_CAM
-from general_utils.augment_utils import *
+from GradCAM.train_classification_with_standardClassifier import standardClassifier
 
 
 
@@ -45,7 +47,8 @@ config = {
     'loss_option': 'cl_re',
     'imagenet_mean': [0.485, 0.456, 0.406],
     'imagenet_std': [0.229, 0.224, 0.225],
-    'level' : 'feature'  # 'feature'  'cam'
+    'level' : 'feature',  # 'feature'  'cam'
+    'optimizer': 'SGD' # 'SGD'  'adam'
 }
 
 
@@ -103,6 +106,9 @@ train_loader = DataLoader(train_dataset, batch_size = batch_size, num_workers = 
 validation_loader = DataLoader(val_dataset, batch_size = batch_size, num_workers = num_workers, shuffle=True, drop_last=True)
 
 class_names = np.asarray(train_dataset.class_names)
+
+standard_classifier = standardClassifier(config, train_loader, validation_loader)
+standard_classifier.train()
 
 pof_cam = POF_CAM(config, train_loader, validation_loader)
 pof_cam.train()
