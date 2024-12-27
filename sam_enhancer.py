@@ -1,98 +1,80 @@
-import yaml
-from transformers import SamModel, SamProcessor, SamImageProcessor, SamConfig, SamVisionConfig, SamMaskDecoderConfig, SamPromptEncoderConfig
-from typing import Optional, Union
-
-class SAM:
-    def __init__(self):
-        """
-        Parameters:
-        -----------
-        """
-        self.processor = None
-        self.model = None
-
-    def construct_image_processor(self, config: Optional[Union[str, dict]] = None, from_pretrained: Optional[str] = None):
-        """
-        Wraps the SamProcessor class from the transformers library to process images.
-        Parameters:
-        -----------
-        """
-        if from_pretrained is not None:
-            self.processor = SamProcessor.from_pretrained(from_pretrained)
-
-        if config is None:
-            self.processor = SamProcessor(SamImageProcessor(**config))
-        else:
-            if isinstance(config, str):
-                with open(config, 'r') as file:
-                    config = yaml.safe_load(file)
-            else:
-                try:
-                    config = dict(config)
-                except:
-                    raise TypeError("The config parameter must be a string or a dictionary-like.")
-            self.processor = SamProcessor(SamImageProcessor(**config))
-
-    def load_sam_model(self, config: Optional[Union[str, dict]] = None, from_pretrained: Optional[str] = None):
-        """
-        Wraps the SamModel class from the transformers library to load the model.
-        Parameters:
-        -----------
-        """
-        if from_pretrained is not None:
-            self.model = SamModel.from_pretrained(from_pretrained)
-        else:
-            config = self.load_config(config)
-            self.model = SamModel(config)
-
-    def load_config(self, config: Optional[Union[str, dict]] = None):
-        """
-        Loads the configuration of the model from a yaml file.
-        Parameters:
-        -----------
-        """
-        
-        if config is None:
-            return SamConfig()
-        else:
-            vision_config = SamVisionConfig()
-            mask_decoder_config = SamMaskDecoderConfig()
-            prompt_encoder_config = SamPromptEncoderConfig()
-            if isinstance(config, str):
-                with open(config, 'r') as file:
-                    config = yaml.safe_load(file)
-            else:
-                try:
-                    config = dict(config)
-                except:
-                    raise TypeError("The config parameter must be a string or a dictionary-like.")
-            if 'vision_config' in config:
-                vision_config = SamVisionConfig(**config['vision_config'])
-            if 'mask_decoder_config' in config:
-                mask_decoder_config = SamMaskDecoderConfig(**config['mask_decoder_config'])
-            if 'prompt_encoder_config' in config:
-                prompt_encoder_config = SamPromptEncoderConfig(**config['prompt_encoder_config'])
-            return SamConfig(vision_config=vision_config, mask_decoder_config=mask_decoder_config, prompt_encoder_config=prompt_encoder_config, **config)
-        
-    def compute_sam_masks(self, **kwargs):
-        """
-        Computes the mask of the image given a prompt.
-        Parameters:
-        -----------
-        """
-        if self.processor is not None:
-            inputs = self.processor(**kwargs)
-        else:
-            inputs = kwargs
-
-        return self.model(**inputs)
-    
-    def self_destruct(self):
-        pass
-
+import os
 import numpy as np
-from MERGE.merge import Merger
+import matplotlib.pyplot as plt
 from PIL import Image
+from tqdm import tqdm
+from ultralytics import SAM, FastSAM
+
+class SAME:
+    def __init__(self, model_path="sam2.1_t.pt", fast_SAM=False):
+        """
+        Parameters:
+        -----------
+        """
+        if fast_SAM:
+            self.model = FastSAM("FastSAM-s.pt")
+        else:
+            self.model = SAM(model_path)
+
+    def compute_masks(self, origin_path, destination_path="dataset/SAM_masks"):
+        """
+        Process images from origin_path, create masks using the SAM model, and save them in destination_path.
+
+        Args:
+            origin_path (str): Path to the folder containing images.
+            destination_path (str): Path to the folder where masks will be saved.
+        """
+        # check if the origin path exists  
+        if(not os.path.exists(origin_path)):
+            raise Warning("origin path not found " + origin_path)
+        # if the destination folder doesn't exist create it 
+        if(not os.path.exists(destination_path)):
+            os.makedirs(destination_path)
+            
+        # Walk through the origin directory
+        for root, _, files in tqdm(os.walk(origin_path)):
+            # Determine the relative path
+            relative_path = os.path.relpath(root, origin_path)
+
+            # Create the corresponding destination path
+            destination_dir = os.path.join(destination_path, relative_path)
+            os.makedirs(destination_dir, exist_ok=True)
+
+            for file in files:
+                # Process only image files (you can extend this list as needed)
+                if file.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".tiff")):
+                    # Full path to the input image
+                    image_path = os.path.join(root, file)
+
+                    # Load the image
+                    image = Image.open(image_path).convert("RGB")
+
+                    # Generate the mask using the SAM model
+                    masks = self.model(image)
+
+                    # Save the mask as a .npz file in the destination folder
+                    mask_save_path = os.path.join(destination_dir, f"{os.path.splitext(file)[0]}.npz")
+                    np.savez_compressed(mask_save_path, bool_array=masks[0].masks.data.cpu().numpy())
+
+    @staticmethod
+    def compute_iou(mask1, mask2):
+        """
+        Compute the Intersection over Union (IoU) between two masks.
+
+        Args:
+            mask1 (np.ndarray): First binary mask.
+            mask2 (np.ndarray): Second binary mask.
+
+        Returns:
+            float: IoU score.
+        """
+        intersection = np.logical_and(mask1, mask2).sum()
+        union = np.logical_or(mask1, mask2).sum()
+        return intersection / union if union > 0 else 0.0
+    
+# import numpy as np
+# from MERGE.merge import Merger
+# from PIL import Image
 
 
 class MaxIoU_IMP2(Merger):
@@ -130,7 +112,6 @@ class MaxIoU_IMP2(Merger):
                 #improve = np.sum((pre_cls == cur) * pre_cls) / np.sum(cur) （>0.5）
                 # Note that the two way calculating (improve) are equivalent
                 improve_pred_thresh = np.sum((pre_cls == cur_sam) * pre_cls) / np.sum(pre_cls)
-
                 if improve_thresh > 0 or improve_pred_thresh >= 0.85:
 
                     candidates.append(cur_sam)
@@ -143,7 +124,6 @@ class MaxIoU_IMP2(Merger):
             """cur = np.array(Image.open(filename.path)) == 0
             intersection = np.logical_and(cur, input_cam)
             union = np.logical_or(cur, input_cam)
-
             iou_single = np.sum(intersection) / np.sum(union)
             # overlap_ratio = np.sum((pre_cls == cur) * pre_cls) / np.sum(pre_cls)
             # if improve > 0 or overlap_ratio >= self.threshold:
@@ -162,31 +142,15 @@ class MaxIoU_IMP2(Merger):
         #plt.show()
 
 
-sam = SAM()
-sam.construct_image_processor(from_pretrained="facebook/sam-vit-base")
-sam.load_sam_model(from_pretrained="facebook/sam-vit-base")
-computed_sam = []
-
-for image_path in data_path_list:
-    # loads an image
-    image = etl.get_image(image_path+'.png')
-    # computes sam (returns a 3d array)
-    # TODO: check what is returned
-    sam_mask = sam.compute_sam_masks(image)
-    # saves the sam
-    # TODO: saving of the image
-
-sam.self_destruct()
 
 
 
+# merge = Merger(args.merge_type)
+# segmentation_prediction = []
 
-merge = Merger(args.merge_type)
-segmentation_prediction = []
-
-for image_path in data_path_list:
-    # loads cam
-    computed_cam = etl.load_npy(os.path.join(args.path_prefix_output, args.data_folder_name, 'cam', args.cam_type), os.path.join(os.path.basename(image_path)+'.npy'))
-    # loads sam
-    # TODO: loads sam
-    segmentation_prediction.append(merge.merge(input_cam=computed_cam, input_sam=computed_sam))
+# for image_path in data_path_list:
+#     # loads cam
+#     computed_cam = etl.load_npy(os.path.join(args.path_prefix_output, args.data_folder_name, 'cam', args.cam_type), os.path.join(os.path.basename(image_path)+'.npy'))
+#     # loads sam
+#     # TODO: loads sam
+#     segmentation_prediction.append(merge.merge(input_cam=computed_cam, input_sam=computed_sam))
