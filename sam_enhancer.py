@@ -1,4 +1,5 @@
 import os
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -6,7 +7,7 @@ from tqdm import tqdm
 from ultralytics import SAM, FastSAM
 
 class SAME:
-    def __init__(self, model_path="sam2.1_t.pt", fast_SAM=False):
+    def __init__(self, model_path="sam2.1_t.pt", fast_SAM=False, shape=(512,512)):
         """
         Parameters:
         -----------
@@ -15,6 +16,7 @@ class SAME:
             self.model = FastSAM("FastSAM-s.pt")
         else:
             self.model = SAM(model_path)
+        self.shape = shape
 
     def compute_masks(self, origin_path, destination_path="dataset/SAM_masks"):
         """
@@ -48,13 +50,16 @@ class SAME:
 
                     # Load the image
                     image = Image.open(image_path).convert("RGB")
-
+                    
                     # Generate the mask using the SAM model
                     masks = self.model(image)
+                    # resize the SAM prediction
+                    masks = cv2.resize(masks, self.shape, interpolation=cv2.INTER_NEAREST)
 
+                    
                     # Save the mask as a .npz file in the destination folder
                     mask_save_path = os.path.join(destination_dir, f"{os.path.splitext(file)[0]}.npz")
-                    np.savez_compressed(mask_save_path, bool_array=masks[0].masks.data.cpu().numpy())
+                    np.savez_compressed(mask_save_path, data=masks[0].masks.data.cpu().numpy())
 
     @staticmethod
     def compute_iou(mask1, mask2):
@@ -71,17 +76,12 @@ class SAME:
         intersection = np.logical_and(mask1, mask2).sum()
         union = np.logical_or(mask1, mask2).sum()
         return intersection / union if union > 0 else 0.0
-    
-# import numpy as np
-# from MERGE.merge import Merger
-# from PIL import Image
 
-
-class MaxIoU_IMP2(Merger):
+class MaxIoU_IMP2():
     def __init__(self, num_cls=2):
         self.num_cls = num_cls
 
-    def merge(self, input_cam, name, sam_folder, save_path, plot=False):
+    def merge(self, input_cam, name, sam_masks, save_path, plot=False, prediction_threshold=0.85):
         """
         input_cam: np.array
             numpy array of the cam
@@ -92,9 +92,14 @@ class MaxIoU_IMP2(Merger):
         save_path: str
             path to the folder on where to save the image
         """
-        seen = []
+        # if the destination folder doesn't exist create it 
+        if(not os.path.exists(save_path)):
+            os.makedirs(save_path)
+        
         processed_mask = np.zeros_like(input_cam)
 
+        
+        
         for i in range(1, self.num_cls):
             pre_cls = input_cam == i
             if np.sum(pre_cls) == 0:
@@ -102,20 +107,19 @@ class MaxIoU_IMP2(Merger):
             iou = 0
             candidates = []
             sam_mask = np.zeros_like(pre_cls)
-            for filename in os.scandir(sam_folder):
+            for cur_sam in sam_masks:
                 # TODO: check if SAM is background=0 and object 1 or viceversa
                 # (in case it SHOULD be enough to change the 255 to 0)
-                cur_sam = np.array(Image.open(filename.path)) == 0
+                cur_sam = cur_sam == 1
                 sam_mask = np.logical_or(sam_mask, cur_sam)
                 # intersection between pre_cls
                 improve_thresh = 2 * np.sum((pre_cls == cur_sam) * pre_cls) - np.sum(cur_sam)
                 #improve = np.sum((pre_cls == cur) * pre_cls) / np.sum(cur) （>0.5）
                 # Note that the two way calculating (improve) are equivalent
                 improve_pred_thresh = np.sum((pre_cls == cur_sam) * pre_cls) / np.sum(pre_cls)
-                if improve_thresh > 0 or improve_pred_thresh >= 0.85:
+                if improve_thresh > 0 or improve_pred_thresh >= prediction_threshold:
 
                     candidates.append(cur_sam)
-                    seen.append(filename.path)
                     iou += np.sum(pre_cls == cur_sam)
             cam_mask = np.logical_and(sam_mask==0, pre_cls==1)
             # Trust CAM if SAM has no prediction on that pixel
@@ -136,12 +140,50 @@ class MaxIoU_IMP2(Merger):
 
             processed_mask[np.sum(candidates, axis=0) > 0] = i
 
+        
         plt.imsave(f'{save_path}/{name}.png', processed_mask, cmap='gray')
         if plot:
             plt.imshow(processed_mask, cmap='gray')
         #plt.show()
 
 
+    def compare_masks(self, sam_masks_path, original_masks_path):
+        """
+        Compare masks from two directories using a given function.
+
+        Args:
+            sam_masks_path (str): Path to the folder containing SAM-generated masks.
+            original_masks_path (str): Path to the folder containing original masks.
+            compare (callable): Function to compare an image and a numpy array.
+        """
+        for root, _, files in os.walk(original_masks_path):
+            # Determine the relative path
+            relative_path = os.path.relpath(root, original_masks_path)
+
+            # Corresponding SAM masks directory
+            sam_dir = os.path.join(sam_masks_path, relative_path)
+
+            for file in files:
+                if file.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".tiff")):
+                    # Full path to the original mask
+                    original_mask_path = os.path.join(root, file)
+
+                    # Corresponding SAM mask path
+                    sam_mask_path = os.path.join(sam_dir, f"{os.path.splitext(file)[0]}.npz")
+
+                    if os.path.exists(sam_mask_path):
+                        # Load the original mask
+                        original_mask = Image.open(original_mask_path).convert("L")
+
+                        # Load the SAM mask
+                        with np.load(sam_mask_path) as data:
+                            sam_mask = data["mask"]
+
+                        # Call the compare function
+                        self.compare(original_mask, sam_mask)
+                        
+    def compare(self, original_mask, SAM_masks):
+        return
 
 
 
