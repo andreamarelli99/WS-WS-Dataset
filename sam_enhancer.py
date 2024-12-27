@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from tqdm import tqdm
 from ultralytics import SAM, FastSAM
+import skimage.transform as st
+
 
 class SAME:
     def __init__(self, model_path="sam2.1_t.pt", fast_SAM=False, shape=(512,512)):
@@ -54,12 +56,12 @@ class SAME:
                     # Generate the mask using the SAM model
                     masks = self.model(image)
                     # resize the SAM prediction
-                    masks = cv2.resize(masks, self.shape, interpolation=cv2.INTER_NEAREST)
+                    masks = np.array([st.resize(tmp, (512,512), order=0, preserve_range=True, anti_aliasing=False) for tmp in masks[0].masks.data.cpu().numpy()])
 
                     
                     # Save the mask as a .npz file in the destination folder
                     mask_save_path = os.path.join(destination_dir, f"{os.path.splitext(file)[0]}.npz")
-                    np.savez_compressed(mask_save_path, data=masks[0].masks.data.cpu().numpy())
+                    np.savez_compressed(mask_save_path, data=masks)
 
     @staticmethod
     def compute_iou(mask1, mask2):
