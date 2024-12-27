@@ -1,5 +1,5 @@
 import sys
-sys.path.append('GradCAM/')
+sys.path.append('Standard_classifier/')
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -23,9 +23,9 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from gradCAM_utils.optim_utils import *
-from gradCAM_utils.io_utils import *
-from gradCAM_utils.txt_utils import *
+from standard_cl_utils.optim_utils import *
+from standard_cl_utils.io_utils import *
+from standard_cl_utils.txt_utils import *
 from general_utils.augment_utils import *
 from general_utils.torch_utils import *
 from general_utils.augment_utils import *

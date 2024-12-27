@@ -16,7 +16,7 @@ from general_utils.augment_utils import *
 
 from POF_CAM.train_classification_with_POF_CAM import POF_CAM
 from Puzzle_CAM.train_classification_with_Puzzle_CAM import Puzzle_CAM
-from GradCAM.train_classification_with_standardClassifier import standardClassifier
+from Standard_classifier.train_classification_with_standardClassifier import standardClassifier
 
 
 
@@ -110,8 +110,8 @@ class_names = np.asarray(train_dataset.class_names)
 standard_classifier = standardClassifier(config, train_loader, validation_loader)
 standard_classifier.train()
 
-pof_cam = POF_CAM(config, train_loader, validation_loader)
-pof_cam.train()
-
 puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
 puzzle_cam.train()
+
+pof_cam = POF_CAM(config, train_loader, validation_loader)
+pof_cam.train()
