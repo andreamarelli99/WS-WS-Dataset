@@ -191,9 +191,10 @@ class Seruso_three_classes_flow(CamFlowDataset):
                  dstype = 'training', 
                  transform: Optional[Callable] = None,
                  augment = False,
-                 loader: Callable[[str], Any] = pil_loader,):
+                 loader: Callable[[str], Any] = pil_loader,
+                 with_flow = False):
         
-        super(Seruso_three_classes_flow, self).__init__(transform = transform, augment = augment, loader = loader)
+        super(Seruso_three_classes_flow, self).__init__(transform = transform, augment = augment, loader = loader, with_flow = with_flow)
 
         self.img_root = img_root
         self.dstype = dstype
@@ -255,17 +256,30 @@ class SerusoTestDataset(CamFlowDataset):
     def __init__(self,
                  img_root = '../../../../Datasets/SERUSO_DATASETS/test_set',
                  classes_subfolders = ['before', 'after'],
-                 transform: Optional[Callable] = None):
+                 transform: Optional[Callable] = None,
+                 loader: Callable[[str], Any] = pil_loader,
+                 return_img_path = True, 
+                 with_flow = False,
+                 with_mask = False):
+               
+        super(SerusoTestDataset, self).__init__(transform = transform, loader = loader, with_flow = with_flow)
     
         self.transform = transform
-
         self.img_root = img_root
+        self.with_mask = with_mask
+        self.return_img_path = return_img_path
 
         assert(os.path.isdir(os.path.join(self.img_root)))
 
         images = []
+        
+        self.class_names = []
+        self.class_dic = {}
 
         for class_name in sorted(os.listdir(os.path.join(img_root, "images"))):
+
+            self.class_names.append(class_name)
+            self.class_dic[class_name] = len(self.class_dic)
 
             if class_name in classes_subfolders:
 
@@ -328,34 +342,78 @@ class SerusoTestDataset(CamFlowDataset):
         
         index = index % len(self.image_list)
 
-        img1 = frame_utils.read_gen(self.image_list[index][0])
-        img2 = frame_utils.read_gen(self.image_list[index][1])
-        img3 = frame_utils.read_gen(self.image_list[index][2])
+        if self.with_flows:
 
-        flow1 = frame_utils.read_gen(self.flow_list[index][0])
-        flow2 = frame_utils.read_gen(self.flow_list[index][1])
+            img1 = frame_utils.read_gen(self.image_list[index][0])
+            img2 = frame_utils.read_gen(self.image_list[index][1])
+            img3 = frame_utils.read_gen(self.image_list[index][2])
 
-        flow1 = np.array(flow1).astype(np.float32)
-        flow2 = np.array(flow2).astype(np.float32)
+            flow1 = frame_utils.read_gen(self.flow_list[index][0])
+            flow2 = frame_utils.read_gen(self.flow_list[index][1])
 
-        mask1 = self.get_mask(self.mask_list[index][0]) 
-        mask2 = self.get_mask(self.mask_list[index][1])
-        mask3 = self.get_mask(self.mask_list[index][2])
+            flow1 = np.array(flow1).astype(np.float32)
+            flow2 = np.array(flow2).astype(np.float32)
+            
+            flow1 = torch.from_numpy(flow1).permute(2, 0, 1).float()
+            flow2 = torch.from_numpy(flow2).permute(2, 0, 1).float()
 
-        if self.transform is not None:
-            img1 = self.transform(img1)
-            img2 = self.transform(img2)
-            img3 = self.transform(img3)
+            
+            if self.transform is not None:            
+                img1 = self.transform(img1)
+                img2 = self.transform(img2)
+                img3 = self.transform(img3)
 
-            mask1 = self.transform.transforms[0](mask1)
-            mask2 = self.transform.transforms[0](mask2)
-            mask3 = self.transform.transforms[0](mask3)         
+            if self.with_mask:
 
+                mask1 = self.get_mask(self.mask_list[index][0]) 
+                mask2 = self.get_mask(self.mask_list[index][1])
+                mask3 = self.get_mask(self.mask_list[index][2])
 
-        flow1 = torch.from_numpy(flow1).permute(2, 0, 1).float()
-        flow2 = torch.from_numpy(flow2).permute(2, 0, 1).float()
+                if self.transform is not None:
 
-        return [img1, img2, img3], [flow1, flow2], [mask1, mask2, mask3]
+                    mask1 = self.transform.transforms[0](mask1)
+                    mask2 = self.transform.transforms[0](mask2)
+                    mask3 = self.transform.transforms[0](mask3)
+
+                if self.return_img_path:
+                    return [img1, img2, img3], [flow1, flow2], [mask1, mask2, mask3], self.image_list[index][1]
+
+                else:
+                    return [img1, img2, img3], [flow1, flow2], [mask1, mask2, mask3]
+            
+            if self.return_img_path:
+                return [img1, img2, img3], [flow1, flow2], self.image_list[index][1]
+
+            else:
+                return [img1, img2, img3], [flow1, flow2]
+        
+        else:
+            
+            img = frame_utils.read_gen(self.image_list[index][1])
+
+            if self.transform is not None:
+                img = self.transform(img)                
+
+            if self.with_mask:
+
+                mask = self.get_mask(self.mask_list[index][1])
+
+                if self.transform is not None:
+                    mask = self.transform.transforms[0](mask)
+            
+                if self.return_img_path:
+                    return img, mask, self.image_list[index][1]
+
+                else:
+                    return img, mask
+            
+            if self.return_img_path:
+                return img, self.image_list[index][1]
+            else:
+                return img
+        
+    def get_whith_mask_bool(self):
+        return self.with_mask
 
 
 def split2list(images, split, default_split=1.1,order = False):

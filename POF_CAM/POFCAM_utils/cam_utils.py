@@ -58,7 +58,7 @@ def generate_cams(ori_image, cam_model, scales, normalize = True):
     cams_list = [get_cam_of_scale(ori_image, scale, cam_model) for scale in scales]
     hr = []    
 
-    for i in range(3):
+    for i in range(cam_model.num_classes):
 
         hr_cams_list = [resize_for_tensors(cams.unsqueeze(0), strided_up_size)[0] for cams in cams_list]
         hr_cams = torch.sum(torch.stack(hr_cams_list), dim=0)[:, :ori_h, :ori_w]

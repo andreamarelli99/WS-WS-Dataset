@@ -39,13 +39,15 @@ class POF_CAM_inference:
         self.test_dataset = test_dataset
         self.scales = [float(scale) for scale in self.scales.split(',')]
 
+        self.class_dict = {v: k for k, v in test_dataset.class_dic.items()}
+        self.denormalizer = Denormalize()
         set_seed(self.seed)
         self.set_log()
         self.set_model()
 
     def set_log(self):
         self.log_dir = create_directory(f'./experiments/POF-CAM/log/inference/')
-        self.cam_dir = create_directory(f'./experiments/POF-CAM/cam/')
+        self.cam_dir = create_directory(f'./experiments/POF-CAM/cams/')
         self.log_func = lambda string='': print(string)
     
     def set_model(self):
@@ -59,7 +61,11 @@ class POF_CAM_inference:
         match = re.search(r'epochs_(.*?)_batch', self.tag)
         architecture = match.group(1)
 
-        self.cam_model = Classifier(architecture, 3, mode=self.mode)
+        loaded_dict = torch.load(model_path)
+
+        self.num_of_classes = loaded_dict['classifier.weight'].shape[0]
+
+        self.cam_model = Classifier(architecture, self.num_of_classes, mode=self.mode)
 
         self.cam_model = self.cam_model.cuda()
         self.cam_model.eval()
@@ -80,7 +86,43 @@ class POF_CAM_inference:
 
         self.log_func(f'model_path: {model_path}')
 
-        load_model(self.cam_model, model_path, parallel=the_number_of_gpu > 1)
+        # load_model(self.cam_model, model_path, parallel=the_number_of_gpu > 1)
+
+        if the_number_of_gpu > 1:
+            self.cam_model.module.load_state_dict(loaded_dict)
+        else:
+            self.cam_model.load_state_dict(loaded_dict)
+
+    
+    def generate_cams_lateral(self, left_s, sample, right_s, flows, scales, cam_model):
+        
+        hr = generate_cams(sample, cam_model, scales, normalize = False)
+        hr_left = generate_cams(left_s, cam_model, scales, normalize = False)
+        hr_right = generate_cams(right_s, cam_model, scales, normalize = False)
+        
+        hr = torch.stack(hr).unsqueeze(0)
+        hr_left = torch.stack(hr_left).unsqueeze(0)
+        hr_right = torch.stack(hr_right).unsqueeze(0)
+        
+        flows_left, flows_right = flows
+
+        flows_left = flows_left.unsqueeze(0)
+        flows_right = flows_right.unsqueeze(0)
+        
+        flows_left = resize_flows_batch(-flows_left, hr_left.shape[-2:])
+        flows_right = resize_flows_batch(flows_right, hr_right.shape[-2:])
+
+        warped_left, mask_left = warp(hr_left.cuda(), flows_left.cuda())
+        warped_right, mask_right = warp(hr_right.cuda(), flows_right.cuda())
+        hr = hr.cuda()
+        
+        re_hr = torch.max(torch.stack([warped_left, hr, warped_right], dim=1), dim=1)[0]
+
+        re_hr /= F.adaptive_max_pool2d(re_hr, (1, 1)) + 1e-5
+        
+        re_hr = list(torch.unbind(re_hr[0]))
+
+        return re_hr
 
 
     def generate_masks_no_gt(self, hr, img):
@@ -108,53 +150,53 @@ class POF_CAM_inference:
         plt.tight_layout()
         plt.show()
 
-    def generate_cams_lateral(self, left_s, right_s, flows, scales, cam_model):
-        
-        hr_left = generate_cams(left_s, cam_model, scales, normalize = False)
-        hr_right = generate_cams(right_s, cam_model, scales, normalize = False)
-        
-        hr_left = torch.stack(hr_left).unsqueeze(0)
-        hr_right = torch.stack(hr_right).unsqueeze(0)
-        
-        flows_left, flows_right = flows
-
-        flows_left = flows_left.unsqueeze(0)
-        flows_right = flows_right.unsqueeze(0)
-        
-        flows_left = resize_flows_batch(-flows_left, hr_left.shape[-2:])
-        flows_right = resize_flows_batch(flows_right, hr_right.shape[-2:])
-
-        warped_left, mask_left = warp(hr_left.cuda(), flows_left.cuda())
-        warped_right, mask_right = warp(hr_right.cuda(), flows_right.cuda())
-        
-        re_hr = torch.max(torch.stack([warped_left, warped_right], dim=1), dim=1)[0]
-
-        re_hr /= F.adaptive_max_pool2d(re_hr, (1, 1)) + 1e-5
-        
-        re_hr = list(torch.unbind(re_hr[0]))
-
-        return re_hr
-
-    def generate_masks(self, hr, img, gt = None, visualize = False):
+    def generate_masks(self, hr, img = None, gt = None, visualize = False):
         stacked_maps = torch.stack(hr)
         # Find the index of the attribution map with the maximum value for each pixel
         max_map_index = stacked_maps.argmax(dim=0)
 
+        masks = []
+
         if visualize:
+
+            self.visualize_cams(img, hr, mask = gt)
             num_rows= 1
-            num_cols = 5
 
-            fig, axes = plt.subplots(num_rows, num_cols, figsize=(25, 5))
-            fig.suptitle(f"Model: {self.tag}", fontsize=16)
+            if gt == None:
 
-            for i in range(len(hr)):
-                mask_visualized = (max_map_index == i).int()
-                
-                axes[i].imshow(mask_visualized.cpu(), cmap='binary')
-                axes[i].axis('off')    
+                num_cols = self.num_of_classes +1
 
-            axes[-2].imshow(gt, cmap='binary')# Set subplot title
-            axes[-2].axis('off')
+                fig, axes = plt.subplots(num_rows, num_cols, figsize=(25, 5))
+                fig.suptitle(f"Model: {self.tag}", fontsize=16)
+
+                for i in range(self.num_of_classes):
+
+                    mask_visualized = (max_map_index == i).int()
+
+                    masks.append(mask_visualized.cpu())
+                    
+                    axes[i].imshow(mask_visualized.cpu(), cmap='binary')
+                    axes[i].axis('off')    
+
+                axes[-1].imshow(img)
+                axes[-1].axis('off')  
+
+            else:
+                num_cols = self.num_of_classes + 2
+
+                fig, axes = plt.subplots(num_rows, num_cols, figsize=(25, 5))
+                fig.suptitle(f"Model: {self.tag}", fontsize=16)
+
+                for i in range(self.num_of_classes):
+                    mask_visualized = (max_map_index == i).int()
+
+                    masks.append(mask_visualized.cpu())
+                    
+                    axes[i].imshow(mask_visualized.cpu(), cmap='binary')
+                    axes[i].axis('off')    
+
+                axes[-2].imshow(gt, cmap='binary')# Set subplot title
+                axes[-2].axis('off')
 
             axes[-1].imshow(img)
             axes[-1].axis('off')    
@@ -164,40 +206,45 @@ class POF_CAM_inference:
             plt.show()
 
         else:
-            masks = []
-            for i in range(len(hr)):
+            for i in range(self.num_of_classes):
                 mask_visualized = (max_map_index == i).int()
                 masks.append(mask_visualized.cpu())
 
-            return masks
         
+        return masks
 
-    def make_all_cams(self):
+        
+    def visualize_cams(self, sample, hi_res_cams, mask = None):
 
-        denormalizer = Denormalize()
+        den_image = self.denormalizer(sample)
 
-        with torch.no_grad():
-            samples, flows, masks = self.test_dataset[200] #2368 for can  35 fpr anomaly  1789 for empty
-            left_s, sample, right_s = samples
-            mask_l, mask, masks_r = masks
-
-            ori_image = sample #.image
-            ori_w, ori_h = ori_image.shape[0], ori_image.shape[1]
-
+        if mask == None:
             num_rows = 1
-            num_cols = 5
+            num_cols = 4
 
-            den_image = denormalizer(ori_image)
-
-            hi_res_cams  = generate_cams(ori_image, self.cam_model, self.scales, True)
-            hi_res_cams_lateral = self.generate_cams_lateral(left_s, right_s, flows, self.scales, self.cam_model)
-            
             fig, axes = plt.subplots(num_rows, num_cols, figsize=(25, 5))
             fig.suptitle(f"Model: {self.tag}", fontsize=16)
             
-            print("single")
+            for i in range(self.num_of_classes):
 
-            for i in range(len(hi_res_cams)):
+                heatmap_image = show_cam_on_image(den_image, hi_res_cams[i], use_rgb=True)
+                axes[i].imshow(heatmap_image)
+                axes[i].axis('off')
+
+            axes[-1].imshow(den_image)
+            axes[-1].axis('off')
+            
+            plt.tight_layout()
+            plt.show()
+
+        else:   
+            num_rows = 1
+            num_cols = 5
+
+            fig, axes = plt.subplots(num_rows, num_cols, figsize=(25, 5))
+            fig.suptitle(f"Model: {self.tag}", fontsize=16)
+            
+            for i in range(self.num_of_classes):
 
                 heatmap_image = show_cam_on_image(den_image, hi_res_cams[i], use_rgb=True)
                 axes[i].imshow(heatmap_image)
@@ -212,26 +259,60 @@ class POF_CAM_inference:
             plt.tight_layout()
             plt.show()
 
-            self.generate_masks(hi_res_cams, den_image, mask, visualize = True)
+    def save_masks(self, msks, ori_path):
 
-            fig, axes = plt.subplots(num_rows, num_cols, figsize=(20, 5))
-            fig.suptitle(f"Model: {self.tag}", fontsize=16)
+        _, rel_path = ori_path.split("images/", 1)
+        rel_path = rel_path.replace(".jpg", ".npz")
 
-            for i in range(len(hi_res_cams_lateral)):
+        for i in range(len(self.class_dict)):
 
-                heatmap_image = show_cam_on_image(den_image, hi_res_cams_lateral[i], use_rgb=True)
-                axes[i].imshow(heatmap_image)
-                axes[i].axis('off')
-
-            axes[-2].imshow(mask)
-            axes[-2].axis('off')
-
-            axes[-1].imshow(den_image)
-            axes[-1].axis('off')
+            full_path = os.path.join(self.cam_dir, self.class_dict[i] + '_maps', rel_path)
             
-            plt.tight_layout()
-            plt.show()
+            directory = create_directory(f'{os.path.dirname(full_path)}/')
 
-            self.generate_masks(hi_res_cams_lateral, den_image, mask, visualize = True)
+            np.savez_compressed(full_path, array=msks[i])
+
+
+
+    def make_all_cams(self, visualize = False):
+
+        with torch.no_grad():
+
+            if self.test_dataset.get_whith_mask_bool():
+
+                if self.test_dataset.get_whith_flows_bool():
+
+                    for index_for_dataset in range(len(self.test_dataset)):
+                        samples, flows, masks, path = self.test_dataset[index_for_dataset]
+                        left_s, sample, right_s = samples
+                        _, mask, _ = masks
+                        hi_res_cams = self.generate_cams_lateral(left_s, sample, right_s, flows, self.scales, self.cam_model)
+                        masks = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
+                        self.save_masks(masks, path)
+
+                else:
+                    
+                    for index_for_dataset in range(len(self.test_dataset)):
+                        sample, mask, path = self.test_dataset[index_for_dataset]
+                        hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
+                        masks = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
+                        self.save_masks(masks, path)
+                
+            else:
+
+                if self.test_dataset.get_whith_flows_bool():
+                    for index_for_dataset in range(len(self.test_dataset)):
+                        samples, flows, path = self.test_dataset[index_for_dataset]
+                        left_s, sample, right_s = samples
+                        hi_res_cams = self.generate_cams_lateral(left_s, sample, right_s, flows, self.scales, self.cam_model)
+                        masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                        self.save_masks(masks, path)
+
+                else:
+                    for index_for_dataset in range(len(self.test_dataset)):
+                        sample, path  = self.test_dataset[index_for_dataset]
+                        hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
+                        masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                        self.save_masks(masks, path)
 
 
