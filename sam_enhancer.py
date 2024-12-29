@@ -56,13 +56,115 @@ class SAME:
                     # Generate the mask using the SAM model
                     masks = self.model(image)
                     # resize the SAM prediction
-                    masks = np.array([st.resize(tmp, (512,512), order=0, preserve_range=True, anti_aliasing=False) for tmp in masks[0].masks.data.cpu().numpy()])
+                    masks = np.array([st.resize(tmp, self.shape, order=0, preserve_range=True, anti_aliasing=False) for tmp in masks[0].masks.data.cpu().numpy()])
 
                     
                     # Save the mask as a .npz file in the destination folder
                     mask_save_path = os.path.join(destination_dir, f"{os.path.splitext(file)[0]}.npz")
                     np.savez_compressed(mask_save_path, data=masks)
 
+
+    def merge_masks(self, origin_path, sam_path, destination_path, number_classes=2):
+        self.merger = MaxIoU_IMP2(number_classes)
+        
+        # check if the origin path exists  
+        if(not os.path.exists(origin_path)):
+            raise Warning("origin path not found " + origin_path)
+        if(not os.path.exists(sam_path)):
+            raise Warning("origin path not found " + sam_path)
+        
+        # if the destination folder doesn't exist create it 
+        if(not os.path.exists(destination_path)):
+            os.makedirs(destination_path)
+            
+        # Walk through the origin directory
+        for root, _, files in tqdm(os.walk(origin_path)):
+            # Determine the relative path
+            relative_path = os.path.relpath(root, origin_path)
+
+            # Determin the corresponding SAM path
+            relative_sam_path = os.path.join(sam_path, relative_path)
+
+            # Create the corresponding destination path
+            destination_dir = os.path.join(destination_path, relative_path)
+            os.makedirs(destination_dir, exist_ok=True)
+
+            for file in files:
+                # Process only image files (you can extend this list as needed)
+                if file.lower().endswith(".npz"):
+                    # Full path to the input image
+                    mask_origin_path = os.path.join(root, file)
+                    name_file_npz = os.path.splitext(file)[0] + ".npz"
+                    mask_sam_path = os.path.join(relative_sam_path, name_file_npz)
+                    
+                    if(not os.path.exists(mask_sam_path)):
+                        raise Warning("SAM mask not found " + mask_sam_path)
+                    
+                    # Load the orginal mask and the SAM masks
+                    mask_original = np.load(mask_origin_path)["data"]
+                    if(mask_original.shape != self.shape):
+                        mask_original = st.resize(mask_original, self.shape, order=0, preserve_range=True, anti_aliasing=False)
+                    masks_sam = np.load(mask_sam_path)["data"]
+                    if(masks_sam.shape[1:] != self.shape):
+                        masks_sam = np.array([st.resize(tmp, self.shape, order=0, preserve_range=True, anti_aliasing=False) for tmp in masks_sam])
+                    
+                    mask_enhanced = self.merger.merge(mask_original, masks_sam)
+                    
+                    # Save the mask as a .npz file in the destination folder
+                    mask_save_path = os.path.join(destination_dir, name_file_npz)
+                    np.savez_compressed(mask_save_path, data=mask_enhanced)
+
+    @staticmethod
+    def plot_file(image_path, mask_path, mask_enhanced_path, groundtrugh_path=None):
+        """
+        Plot the original image, the original mask, the SAM mask, and the enhanced mask.
+
+        Args:
+            image_path (str): Path to the image.
+            mask_path (str): Path to the original mask.
+            mask_enhanced_path (str): Path to the enhanced mask.
+            groundtrugh_path (str): Path to the ground truth mask.
+        """
+        # Load the image
+        image = Image.open(image_path)
+        # Load the original mask
+        mask = np.load(mask_path)["data"]
+        # Load the enhanced mask
+        mask_enhanced = np.load(mask_enhanced_path)["data"]
+        # Load the ground truth mask
+        if groundtrugh_path is not None:
+            mask_gt = st.resize(np.array(Image.open(groundtrugh_path).convert("L")), mask_enhanced.shape, order=0, preserve_range=True, anti_aliasing=False)
+
+        if groundtrugh_path is None:
+            fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+        else:
+            fig, axs = plt.subplots(1, 4, figsize=(16, 4))
+
+        axs[0].imshow(image)
+        axs[0].set_title("Image")
+        axs[0].axis("off")
+
+        axs[1].imshow(mask, cmap="gray")
+        if groundtrugh_path is None:
+            axs[1].set_title("Original Mask")
+        else:
+            axs[1].set_title("Original Mask (IoU: {:.2f})".format(SAME.compute_iou(mask, mask_gt)))
+        axs[1].axis("off")
+
+        axs[2].imshow(mask_enhanced, cmap="gray")
+        if groundtrugh_path is None:
+            axs[2].set_title("Enhanced Mask")
+        else:
+            axs[2].set_title("Enhanced Mask (IoU: {:.2f})".format(SAME.compute_iou(mask_enhanced, mask_gt)))
+        axs[2].axis("off")
+
+        if groundtrugh_path is not None:
+            axs[3].imshow(mask_gt, cmap="gray")
+            axs[3].set_title("Ground Truth Mask")
+            axs[3].axis("off")
+
+        plt.show()
+    
     @staticmethod
     def compute_iou(mask1, mask2):
         """
@@ -83,7 +185,7 @@ class MaxIoU_IMP2():
     def __init__(self, num_cls=2):
         self.num_cls = num_cls
 
-    def merge(self, input_cam, name, sam_masks, save_path, plot=False, prediction_threshold=0.85):
+    def merge(self, input_cam, sam_masks, prediction_threshold=0.85):
         """
         input_cam: np.array
             numpy array of the cam
@@ -94,9 +196,6 @@ class MaxIoU_IMP2():
         save_path: str
             path to the folder on where to save the image
         """
-        # if the destination folder doesn't exist create it 
-        if(not os.path.exists(save_path)):
-            os.makedirs(save_path)
         
         processed_mask = np.zeros_like(input_cam)
 
@@ -143,49 +242,9 @@ class MaxIoU_IMP2():
             processed_mask[np.sum(candidates, axis=0) > 0] = i
 
         
-        plt.imsave(f'{save_path}/{name}.png', processed_mask, cmap='gray')
-        if plot:
-            plt.imshow(processed_mask, cmap='gray')
+        return processed_mask
         #plt.show()
 
-
-    def compare_masks(self, sam_masks_path, original_masks_path):
-        """
-        Compare masks from two directories using a given function.
-
-        Args:
-            sam_masks_path (str): Path to the folder containing SAM-generated masks.
-            original_masks_path (str): Path to the folder containing original masks.
-            compare (callable): Function to compare an image and a numpy array.
-        """
-        for root, _, files in os.walk(original_masks_path):
-            # Determine the relative path
-            relative_path = os.path.relpath(root, original_masks_path)
-
-            # Corresponding SAM masks directory
-            sam_dir = os.path.join(sam_masks_path, relative_path)
-
-            for file in files:
-                if file.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".tiff")):
-                    # Full path to the original mask
-                    original_mask_path = os.path.join(root, file)
-
-                    # Corresponding SAM mask path
-                    sam_mask_path = os.path.join(sam_dir, f"{os.path.splitext(file)[0]}.npz")
-
-                    if os.path.exists(sam_mask_path):
-                        # Load the original mask
-                        original_mask = Image.open(original_mask_path).convert("L")
-
-                        # Load the SAM mask
-                        with np.load(sam_mask_path) as data:
-                            sam_mask = data["mask"]
-
-                        # Call the compare function
-                        self.compare(original_mask, sam_mask)
-                        
-    def compare(self, original_mask, SAM_masks):
-        return
 
 
 
