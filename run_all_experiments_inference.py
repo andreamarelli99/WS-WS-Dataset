@@ -15,7 +15,6 @@ from torch.utils.data import DataLoader
 from general_utils.augment_utils import *
 
 from POF_CAM.inference_cam_generation_POFCAM import POF_CAM_inference
-from Puzzle_CAM.train_classification_with_Puzzle_CAM import Puzzle_CAM
 from Standard_classifier.train_classification_with_standardClassifier import standardClassifier
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -59,3 +58,4 @@ test_dataset = seruso_datasets.SerusoTestDataset(img_root = root_with_temporal_l
 
 pof_cam = POF_CAM_inference(config, test_dataset)
 pof_cam.make_all_cams()
+

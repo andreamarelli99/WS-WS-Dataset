@@ -20,7 +20,7 @@ from Standard_classifier.train_classification_with_standardClassifier import sta
 
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 
@@ -115,3 +115,4 @@ puzzle_cam.train()
 
 pof_cam = POF_CAM(config, train_loader, validation_loader)
 pof_cam.train()
+

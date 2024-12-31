@@ -16,15 +16,16 @@ from torch.utils.data import DataLoader
 
 import seruso_datasets
 
-from POF_core.networks import *
-from POFCAM_utils.optical_flow_utils import *
-from POFCAM_utils.io_utils import *
 from general_utils.augment_utils import *
 from general_utils.frame_utils import *
-from POFCAM_utils.log_utils import *
+from general_utils.torch_utils import *
+from general_utils.io_utils import *
+from general_utils.log_utils import *
+
+from POF_core.networks import *
+from POFCAM_utils.optical_flow_utils import *
 from POFCAM_utils.optim_utils import *
 from POFCAM_utils.time_utils import *
-from general_utils.torch_utils import *
 from POFCAM_utils.puzzle_utils import *
 
 class POF_CAM:
