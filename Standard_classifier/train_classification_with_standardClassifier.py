@@ -179,7 +179,7 @@ class standardClassifier:
 
         best_model_wts = copy.deepcopy(self.model.state_dict())
 
-        best_acc = -1.
+        best_acc = 1.
 
         
         for epoch in range(self.max_epoch):
@@ -236,7 +236,7 @@ class standardClassifier:
                     valid_losses.append(epoch_loss)
                     valid_accuracies.append(epoch_acc)
 
-                    if epoch_acc > best_acc:
+                    if epoch_acc < best_acc:
                         best_acc = epoch_acc
 
                         best_model_wts = copy.deepcopy(self.model.state_dict())
