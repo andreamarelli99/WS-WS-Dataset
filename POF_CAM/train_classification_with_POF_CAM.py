@@ -306,7 +306,8 @@ class POF_CAM:
 
         for iteration in range(self.max_iteration):
 
-            images_lists, flows_lists, labels = self.train_iterator.get() # images_lists, flows_lists, labels, params = train_iterator.get()
+            # images_lists, flows_lists, labels = self.train_iterator.get() # images_lists, flows_lists, labels, params = train_iterator.get()
+            images_lists, flows_lists, labels, params = self.train_iterator.get()
 
             labels =  labels.cuda()
 
@@ -346,7 +347,9 @@ class POF_CAM:
                 left_features = self.make_cam_non_norm(left_features)
                 right_features = self.make_cam_non_norm(right_features)
 
-            # stored_transform = Three_images_batch_trasform(params)
+            stored_transform = Three_images_batch_trasform(params)
+            
+            left_features, features, right_features = stored_transform([left_features, features, right_features], revert= True)
 
             flows_left = resize_flows_batch(flows_left, features.shape[-2:])
             flows_right = resize_flows_batch(flows_right, features.shape[-2:])

@@ -20,7 +20,7 @@ from Standard_classifier.train_classification_with_standardClassifier import sta
 
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1,2'
 
 
 
@@ -44,7 +44,7 @@ config = {
     'beta_schedule': 0.0,
     'glob_beta': 6.0,
     'num_pieces': 4,
-    'loss_option': 'cl_re',
+    'loss_option': 'cl_pcl_re',
     'imagenet_mean': [0.485, 0.456, 0.406],
     'imagenet_std': [0.229, 0.224, 0.225],
     'level' : 'feature',  # 'feature'  'cam'
@@ -76,10 +76,13 @@ normalize_fn = Normalize(imagenet_mean, imagenet_std)
 
 train_transforms = [
     transforms.Resize(input_size),
+    transforms.RandomAffine(degrees=[-90, 90], ),
+    transforms.RandomHorizontalFlip(), 
+    transforms.RandomVerticalFlip(), 
 ]
 
 if 'colorjitter' in augment:
-    train_transforms.append(transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1))
+    train_transforms.append(transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1))
 
 train_transform = transforms.Compose(train_transforms + \
     [
@@ -99,7 +102,7 @@ test_transform = transforms.Compose([
 
 # Remake the test tranform, right now using no augmentation
 
-train_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'training', transform = train_transform, augment = False)
+train_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'training', transform = train_transform, augment = True)
 val_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'validation', transform = test_transform, augment = False)
 
 train_loader = DataLoader(train_dataset, batch_size = batch_size, num_workers = num_workers, shuffle=True, drop_last=True)
