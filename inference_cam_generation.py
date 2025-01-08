@@ -33,6 +33,27 @@ class Cam_generator_inference:
         self.set_log()
         self.set_model()
 
+    def adjust_state_dict(self, state_dict, remove_module=False):
+        """
+        Adjust state dictionary keys to be compatible with single or multi-GPU setups.
+        
+        :param state_dict: Original state dictionary
+        :param remove_module: Set to True to remove the "module." prefix
+        :return: Adjusted state dictionary
+        """
+        new_state_dict = {}
+        for key, value in state_dict.items():
+            if remove_module:
+                # Remove "module." prefix
+                new_key = key.replace("module.", "") if key.startswith("module.") else key
+            else:
+                # Add "module." prefix
+                new_key = f"module.{key}" if not key.startswith("module.") else key
+            new_state_dict[new_key] = value
+
+        return new_state_dict
+
+
 
     def generate_masks_no_gt(self, hr, img):
         stacked_maps = torch.stack(hr)
@@ -119,8 +140,7 @@ class Cam_generator_inference:
                 mask_visualized = (max_map_index == i).int()
                 masks.append(mask_visualized.cpu())
 
-        
-        return masks
+        return max_map_index.cpu()
 
         
     def visualize_cams(self, sample, hi_res_cams, mask = None):
@@ -171,13 +191,11 @@ class Cam_generator_inference:
     def save_masks(self, msks, ori_path):
 
         _, rel_path = ori_path.split("images/", 1)
-        rel_path = rel_path.replace(".jpg", ".npz")
+        rel_path = rel_path.replace(".jpg", ".npz")    
 
-        for i in range(len(self.class_dict)):
+        full_path = os.path.join(self.cam_dir,'maps', rel_path)
+        
+        directory = create_directory(f'{os.path.dirname(full_path)}/')
 
-            full_path = os.path.join(self.cam_dir, self.class_dict[i] + '_maps', rel_path)
-            
-            directory = create_directory(f'{os.path.dirname(full_path)}/')
-
-            np.savez_compressed(full_path, array=msks[i])
+        np.savez_compressed(full_path, array=msks.cpu())
 

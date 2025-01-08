@@ -39,11 +39,10 @@ class Std_classifier_inference(Cam_generator_inference):
     def __init__(self, param1, param2):
         super().__init__(param1, param2)
         self.test_dataset.do_it_without_flows()
-        self.target_layers = [self.cam_model[0].layer4[-1]]
 
     def set_log(self):
         self.log_dir = create_directory(f'./experiments/GradCAM/log/inference/')
-        self.cam_dir = create_directory(f'./experiments/GradCAM/cams/')
+        self.cam_dir = create_directory(f'./experiments/GradCAM/cams/')     #  /mnt/datasets_1/andream99/GradCAM/cams/     ./experiments/GradCAM/cams/
         self.log_func = lambda string='': print(string)
     
     def set_model(self):
@@ -90,10 +89,19 @@ class Std_classifier_inference(Cam_generator_inference):
         if the_number_of_gpu > 1:
             self.log_func('[i] the number of gpu : {}'.format(the_number_of_gpu))
             self.cam_model = nn.DataParallel(self.cam_model)
+            loaded_dict = self.adjust_state_dict(loaded_dict, remove_module=False)
 
         self.log_func(f'model_path: {model_path}')
 
         self.cam_model.load_state_dict(loaded_dict)
+        
+        if the_number_of_gpu > 1:
+            self.target_layers = [self.cam_model.module[0].layer4[-1]]
+
+        else:
+            self.target_layers = [self.cam_model[0].layer4[-1]]
+
+
         
 
     def prepare_image(self, img, factor, gray = False):
@@ -187,15 +195,15 @@ class Std_classifier_inference(Cam_generator_inference):
                     sample, mask, path = self.test_dataset[index_for_dataset]
 
                     hi_res_cams  = self.generate_cams_with_std_method(sample, self.scales, normalize = True)
-                    masks = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
-                    self.save_masks(masks, path)
+                    mask = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
+                    self.save_masks(mask, path)
                 
             else:
 
                 for index_for_dataset in range(len(self.test_dataset)):
                     sample, path  = self.test_dataset[index_for_dataset]
                     hi_res_cams  = self.generate_cams_with_std_method(sample, self.scales, normalize = True)
-                    masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
-                    self.save_masks(masks, path)
+                    mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                    self.save_masks(mask, path)
 
 
