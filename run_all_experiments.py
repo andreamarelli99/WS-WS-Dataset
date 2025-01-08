@@ -30,7 +30,7 @@ config = {
     'architecture': 'resnet50',
     'mode': 'normal',
     'batch_size': 16,
-    'max_epoch': 40,
+    'max_epoch': 10,
     'lr': 0.1,
     'wd': 1e-4,
     'nesterov': True,
