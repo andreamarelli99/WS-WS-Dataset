@@ -163,8 +163,8 @@ class standardClassifier:
         self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=self.optimizer_ft, gamma=0.9)
 
 
-        # self.criterion = torch.nn.BCELoss()
-        self.criterion = nn.MultiLabelSoftMarginLoss(reduction='none').cuda()
+        self.criterion = torch.nn.BCELoss()
+        # self.criterion = nn.MultiLabelSoftMarginLoss(reduction='none').cuda()
         self.dataloaders_dict = {"train": self.train_loader, "val": self.validation_loader}
 
 
@@ -212,6 +212,8 @@ class standardClassifier:
                     with torch.set_grad_enabled(phase == 'train'):
                         outputs = self.model(images)
                         # labels.data = labels.data
+                        labels = labels.float()
+
                         loss = self.criterion(outputs, labels).mean()  #(logits, labels).mean()
                         preds = (outputs > 0.5).type(torch.cuda.FloatTensor)
 

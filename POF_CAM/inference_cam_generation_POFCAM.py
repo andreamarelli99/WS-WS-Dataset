@@ -167,7 +167,7 @@ class POF_CAM_inference(Cam_generator_inference):
                 else:
                     for index_for_dataset in range(len(self.test_dataset)):
                         sample, path  = self.test_dataset[index_for_dataset]
-                        hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
+                        hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = False)
                         masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
                         if not visualize:
                             self.save_masks(masks, path)

@@ -113,10 +113,10 @@ class_names = np.asarray(train_dataset.class_names)
 standard_classifier = standardClassifier(config, train_loader, validation_loader)
 standard_classifier.train()
 
-puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
-puzzle_cam.train()
+# puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
+# puzzle_cam.train()
 
-pof_cam = POF_CAM(config, train_loader, validation_loader)
-pof_cam.train()
+# pof_cam = POF_CAM(config, train_loader, validation_loader)
+# pof_cam.train()
 
 
