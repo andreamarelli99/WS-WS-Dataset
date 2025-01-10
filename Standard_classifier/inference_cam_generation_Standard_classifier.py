@@ -184,7 +184,7 @@ class Std_classifier_inference(Cam_generator_inference):
         
 
 
-    def make_all_cams(self, visualize = False):
+    def make_all_cams(self, visualize = False, max_item = 10):
 
         # with torch.no_grad():
 
@@ -196,7 +196,11 @@ class Std_classifier_inference(Cam_generator_inference):
 
                     hi_res_cams  = self.generate_cams_with_std_method(sample, self.scales, normalize = True)
                     mask = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
-                    self.save_masks(mask, path)
+                    if not visualize:
+                        self.save_masks(mask, path)
+                    else:
+                        if index_for_dataset > max_item:
+                            break
                 
             else:
 
@@ -204,6 +208,10 @@ class Std_classifier_inference(Cam_generator_inference):
                     sample, path  = self.test_dataset[index_for_dataset]
                     hi_res_cams  = self.generate_cams_with_std_method(sample, self.scales, normalize = True)
                     mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
-                    self.save_masks(mask, path)
+                    if not visualize:
+                        self.save_masks(mask, path)
+                    else:
+                        if index_for_dataset > max_item:
+                            break
 
 

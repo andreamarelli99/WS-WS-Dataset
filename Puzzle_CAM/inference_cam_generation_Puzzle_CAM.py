@@ -87,7 +87,7 @@ class Puzzle_CAM_inference(Cam_generator_inference):
             self.cam_model.load_state_dict(loaded_dict)
 
 
-    def make_all_cams(self, visualize = False):
+    def make_all_cams(self, visualize = False, max_item =10):
 
         with torch.no_grad():
 
@@ -97,7 +97,11 @@ class Puzzle_CAM_inference(Cam_generator_inference):
                     sample, mask, path = self.test_dataset[index_for_dataset]
                     hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
                     masks = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
-                    self.save_masks(masks, path)
+                    if not visualize:
+                        self.save_masks(masks, path)
+                    else:
+                        if index_for_dataset > max_item:
+                            break
                 
             else:
 
@@ -105,6 +109,10 @@ class Puzzle_CAM_inference(Cam_generator_inference):
                     sample, path  = self.test_dataset[index_for_dataset]
                     hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
                     masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
-                    self.save_masks(masks, path)
+                    if not visualize:
+                        self.save_masks(masks, path)
+                    else:
+                        if index_for_dataset > max_item:
+                            break
 
 

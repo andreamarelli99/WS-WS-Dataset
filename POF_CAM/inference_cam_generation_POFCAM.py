@@ -118,7 +118,7 @@ class POF_CAM_inference(Cam_generator_inference):
         return re_hr
 
 
-    def make_all_cams(self, visualize = False):
+    def make_all_cams(self, visualize = False, max_item = 10):
 
         with torch.no_grad():
 
@@ -132,7 +132,11 @@ class POF_CAM_inference(Cam_generator_inference):
                         _, mask, _ = masks
                         hi_res_cams = self.generate_cams_lateral(left_s, sample, right_s, flows, self.scales, self.cam_model)
                         masks = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
-                        self.save_masks(masks, path)
+                        if not visualize:
+                            self.save_masks(masks, path)
+                        else:
+                            if index_for_dataset > max_item:
+                                break
 
                 else:
                     
@@ -140,7 +144,11 @@ class POF_CAM_inference(Cam_generator_inference):
                         sample, mask, path = self.test_dataset[index_for_dataset]
                         hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
                         masks = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
-                        self.save_masks(masks, path)
+                        if not visualize:
+                            self.save_masks(masks, path)
+                        else:
+                            if index_for_dataset > max_item:
+                                break
                 
             else:
 
@@ -150,13 +158,21 @@ class POF_CAM_inference(Cam_generator_inference):
                         left_s, sample, right_s = samples
                         hi_res_cams = self.generate_cams_lateral(left_s, sample, right_s, flows, self.scales, self.cam_model)
                         masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
-                        self.save_masks(masks, path)
+                        if not visualize:
+                            self.save_masks(masks, path)
+                        else:
+                            if index_for_dataset > max_item:
+                                break
 
                 else:
                     for index_for_dataset in range(len(self.test_dataset)):
                         sample, path  = self.test_dataset[index_for_dataset]
                         hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
                         masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
-                        self.save_masks(masks, path)
+                        if not visualize:
+                            self.save_masks(masks, path)
+                        else:
+                            if index_for_dataset > max_item:
+                                break
 
 

@@ -29,8 +29,8 @@ config = {
     'num_workers': 4,
     'architecture': 'resnet50',
     'mode': 'normal',
-    'batch_size': 16,
-    'max_epoch': 10,
+    'batch_size': 32,
+    'max_epoch': 11,
     'lr': 0.1,
     'wd': 1e-4,
     'nesterov': True,
@@ -48,7 +48,7 @@ config = {
     'imagenet_mean': [0.485, 0.456, 0.406],
     'imagenet_std': [0.229, 0.224, 0.225],
     'level' : 'feature',  # 'feature'  'cam'
-    'optimizer': 'SGD' # 'SGD'  'adam'
+    'optimizer': 'adam' # 'SGD'  'adam'
 }
 
 
@@ -62,7 +62,7 @@ dataset_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/three_classes_5000/'
 flow_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/optical_flows_5000/'
 
 
-batch_size = 16
+batch_size = config['batch_size']
 image_size = 512
 
 augment = 'colorjitter' #'colorjitter'
@@ -82,7 +82,7 @@ train_transforms = [
 ]
 
 if 'colorjitter' in augment:
-    train_transforms.append(transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1))
+    train_transforms.append(transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1))
 
 train_transform = transforms.Compose(train_transforms + \
     [
