@@ -30,7 +30,7 @@ config = {
     'architecture': 'resnet50',
     'mode': 'normal',
     'batch_size': 32,
-    'max_epoch': 11,
+    'max_epoch': 40,
     'lr': 0.1,
     'wd': 1e-4,
     'nesterov': True,
@@ -113,10 +113,10 @@ class_names = np.asarray(train_dataset.class_names)
 standard_classifier = standardClassifier(config, train_loader, validation_loader)
 standard_classifier.train()
 
-# puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
-# puzzle_cam.train()
+puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
+puzzle_cam.train()
 
-# pof_cam = POF_CAM(config, train_loader, validation_loader)
-# pof_cam.train()
+pof_cam = POF_CAM(config, train_loader, validation_loader)
+pof_cam.train()
 
 

@@ -39,6 +39,7 @@ class Std_classifier_inference(Cam_generator_inference):
     def __init__(self, param1, param2):
         super().__init__(param1, param2)
         self.test_dataset.do_it_without_flows()
+        self.preprocessing = ToTensor()
 
     def set_log(self):
         self.log_dir = create_directory(f'./experiments/GradCAM/log/inference/')
@@ -111,7 +112,7 @@ class Std_classifier_inference(Cam_generator_inference):
 
         else:
             img = cv2.resize(img, (int(img.shape[1]/factor), int(img.shape[0]/factor)))
-            img = np.float32(img)/255
+            # img = np.float32(img)/255
 
             # img = np.float32(img)/255
 
@@ -121,7 +122,9 @@ class Std_classifier_inference(Cam_generator_inference):
 
         img = self.prepare_image(img, 1/factor)
 
-        img = preprocess_image(img, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        # img = ToTensor(img.copy()).unsqueeze(0)
+
+        img = self.preprocessing(img.copy()).unsqueeze(0)
 
         # img = torch.from_numpy(img)
         # flipped_image = img.flip(-1)
