@@ -30,7 +30,7 @@ config = {
     'architecture': 'resnet50',
     'mode': 'normal',
     'batch_size': 32,
-    'max_epoch': 40,
+    'max_epoch': 15,
     'lr': 0.1,
     'wd': 1e-4,
     'nesterov': True,
@@ -76,9 +76,9 @@ normalize_fn = Normalize(imagenet_mean, imagenet_std)
 
 train_transforms = [
     transforms.Resize(input_size),
-    transforms.RandomAffine(degrees=[-90, 90], ),
-    transforms.RandomHorizontalFlip(), 
-    transforms.RandomVerticalFlip(), 
+    # transforms.RandomAffine(degrees=[-90, 90], ),
+    # transforms.RandomHorizontalFlip(), 
+    # transforms.RandomVerticalFlip(), 
 ]
 
 if 'colorjitter' in augment:
@@ -110,11 +110,11 @@ validation_loader = DataLoader(val_dataset, batch_size = batch_size, num_workers
 
 class_names = np.asarray(train_dataset.class_names)
 
-standard_classifier = standardClassifier(config, train_loader, validation_loader)
-standard_classifier.train()
+# standard_classifier = standardClassifier(config, train_loader, validation_loader)
+# standard_classifier.train()
 
-puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
-puzzle_cam.train()
+# puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
+# puzzle_cam.train()
 
 pof_cam = POF_CAM(config, train_loader, validation_loader)
 pof_cam.train()

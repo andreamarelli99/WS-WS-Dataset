@@ -87,30 +87,34 @@ class Puzzle_CAM_inference(Cam_generator_inference):
             self.cam_model.load_state_dict(loaded_dict)
 
 
-    def make_all_cams(self, visualize = False, max_item =10):
+    def make_all_cams(self, save_mask = True, visualize = False, norm = True, max_item =10):
 
         with torch.no_grad():
 
             if self.test_dataset.get_whith_mask_bool():
                     
+                ious = []
+
                 for index_for_dataset in range(len(self.test_dataset)):
-                    sample, mask, path = self.test_dataset[index_for_dataset]
-                    hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
-                    masks = self.generate_masks(hi_res_cams, sample, mask, visualize = visualize)
-                    if not visualize:
-                        self.save_masks(masks, path)
+                    sample, gt, path = self.test_dataset[index_for_dataset]
+                    hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
+                    mask = self.generate_masks(hi_res_cams, sample, gt, visualize = visualize)
+                    ious.append(self.compute_iou(mask, gt))
+                    if save_mask:
+                        self.save_masks(mask, path)
                     else:
                         if index_for_dataset > max_item:
                             break
+                print(f'Mean IoU: {np.mean(ious)}')
                 
             else:
 
                 for index_for_dataset in range(len(self.test_dataset)):
                     sample, path  = self.test_dataset[index_for_dataset]
-                    hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = True)
-                    masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
-                    if not visualize:
-                        self.save_masks(masks, path)
+                    hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
+                    mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                    if save_mask:
+                        self.save_masks(mask, path)
                     else:
                         if index_for_dataset > max_item:
                             break

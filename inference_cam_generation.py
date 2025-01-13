@@ -33,6 +33,26 @@ class Cam_generator_inference:
         self.set_log()
         self.set_model()
 
+    def compute_iou(self, predicted_mask_binary, ground_truth_mask):
+
+        ground_truth_mask = np.array(ground_truth_mask)/255
+        ground_truth_mask_binary = (ground_truth_mask > 0.5).astype(int)
+
+        # Calculate the intersection and union
+        intersection = np.logical_and(predicted_mask_binary, ground_truth_mask_binary)
+        union = np.logical_or(predicted_mask_binary, ground_truth_mask_binary)
+
+        union_sum = torch.sum(union)
+        if union_sum == 0:
+            iou = 1.0
+        else:
+            iou = float(torch.sum(intersection) / union_sum)
+
+        # Compute IoU
+        # iou = float(torch.sum(intersection) / torch.sum(union))
+
+        return iou
+
     def adjust_state_dict(self, state_dict, remove_module=False):
         """
         Adjust state dictionary keys to be compatible with single or multi-GPU setups.
@@ -140,7 +160,9 @@ class Cam_generator_inference:
                 mask_visualized = (max_map_index == i).int()
                 masks.append(mask_visualized.cpu())
 
-        return max_map_index.cpu()
+        mask_visualized = (max_map_index == 1).int()
+        
+        return mask_visualized.cpu()
 
         
     def visualize_cams(self, sample, hi_res_cams, mask = None):
