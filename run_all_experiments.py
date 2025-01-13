@@ -30,7 +30,7 @@ config = {
     'architecture': 'resnet50',
     'mode': 'normal',
     'batch_size': 32,
-    'max_epoch': 15,
+    'max_epoch': 25,
     'lr': 0.1,
     'wd': 1e-4,
     'nesterov': True,
@@ -102,7 +102,7 @@ test_transform = transforms.Compose([
 
 # Remake the test tranform, right now using no augmentation
 
-train_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'training', transform = train_transform, augment = True)
+train_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'training', transform = train_transform, augment = False)
 val_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, dstype = 'validation', transform = test_transform, augment = False)
 
 train_loader = DataLoader(train_dataset, batch_size = batch_size, num_workers = num_workers, shuffle=True, drop_last=True)
@@ -110,11 +110,11 @@ validation_loader = DataLoader(val_dataset, batch_size = batch_size, num_workers
 
 class_names = np.asarray(train_dataset.class_names)
 
-# standard_classifier = standardClassifier(config, train_loader, validation_loader)
-# standard_classifier.train()
+standard_classifier = standardClassifier(config, train_loader, validation_loader)
+standard_classifier.train()
 
-# puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
-# puzzle_cam.train()
+puzzle_cam = Puzzle_CAM(config, train_loader, validation_loader)
+puzzle_cam.train()
 
 pof_cam = POF_CAM(config, train_loader, validation_loader)
 pof_cam.train()

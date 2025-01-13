@@ -36,8 +36,8 @@ from gradCAM_core.pytorch_grad_cam.metrics.road import *
 
 class Std_classifier_inference(Cam_generator_inference):
 
-    def __init__(self, param1, param2):
-        super().__init__(param1, param2)
+    def __init__(self, config, test_dataset, sam_enhance ):
+        super().__init__(config, test_dataset, sam_enhance)
         self.test_dataset.do_it_without_flows()
         self.preprocessing = ToTensor()
 
@@ -198,9 +198,10 @@ class Std_classifier_inference(Cam_generator_inference):
                 for index_for_dataset in range(len(self.test_dataset)):
                     
                     sample, gt, path = self.test_dataset[index_for_dataset]
-
                     hi_res_cams  = self.generate_cams_with_std_method(sample, self.scales, normalize = norm)
                     mask = self.generate_masks(hi_res_cams, sample, gt, visualize = visualize)
+                    if self.sam_enhance:
+                        mask = self.sam_refinemnet(sample, mask, gt, visualize)
                     ious.append(self.compute_iou(mask, gt))
                     if save_mask:
                         self.save_masks(mask, path)
@@ -216,6 +217,8 @@ class Std_classifier_inference(Cam_generator_inference):
                     sample, path  = self.test_dataset[index_for_dataset]
                     hi_res_cams  = self.generate_cams_with_std_method(sample, self.scales, normalize = norm)
                     mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                    if self.sam_enhance:
+                        mask = self.sam_refinemnet(sample, mask)
                     if save_mask:
                         self.save_masks(mask, path)
                     else:

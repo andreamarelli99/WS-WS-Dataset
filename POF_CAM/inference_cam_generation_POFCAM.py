@@ -35,8 +35,8 @@ from POFCAM_utils.puzzle_utils import *
 
 class POF_CAM_inference(Cam_generator_inference):
 
-    def __init__(self, param1, param2):
-        super().__init__(param1, param2)
+    def __init__(self, config, test_dataset, sam_enhance):
+        super().__init__(config, test_dataset, sam_enhance)
 
     def set_log(self):
         self.log_dir = create_directory(f'./experiments/POF-CAM/log/inference/')
@@ -134,6 +134,8 @@ class POF_CAM_inference(Cam_generator_inference):
                         _, gt, _ = masks
                         hi_res_cams = self.generate_cams_lateral(left_s, sample, right_s, flows, self.scales, self.cam_model)
                         mask = self.generate_masks(hi_res_cams, sample, gt, visualize = visualize)
+                        if self.sam_enhance:
+                            mask = self.sam_refinemnet(sample, mask)
                         ious.append(self.compute_iou(mask, gt))
                         if save_mask:
                             self.save_masks(mask, path)
@@ -148,6 +150,8 @@ class POF_CAM_inference(Cam_generator_inference):
                         sample, gt, path = self.test_dataset[index_for_dataset]
                         hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
                         mask = self.generate_masks(hi_res_cams, sample, gt, visualize = visualize)
+                        if self.sam_enhance:
+                            mask = self.sam_refinemnet(sample, mask)
                         ious.append(self.compute_iou(mask, gt))
                         if save_mask:
                             self.save_masks(mask, path)
@@ -164,6 +168,8 @@ class POF_CAM_inference(Cam_generator_inference):
                         left_s, sample, right_s = samples
                         hi_res_cams = self.generate_cams_lateral(left_s, sample, right_s, flows, self.scales, self.cam_model)
                         masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                        if self.sam_enhance:
+                            mask = self.sam_refinemnet(sample, mask)
                         if not visualize:
                             self.save_masks(masks, path)
                         else:
@@ -175,6 +181,8 @@ class POF_CAM_inference(Cam_generator_inference):
                         sample, path  = self.test_dataset[index_for_dataset]
                         hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
                         masks = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                        if self.sam_enhance:
+                            mask = self.sam_refinemnet(sample, mask)
                         if not visualize:
                             self.save_masks(masks, path)
                         else:

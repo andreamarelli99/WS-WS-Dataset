@@ -34,8 +34,8 @@ from Puzzle_CAM_utils.puzzle_utils import *
 
 class Puzzle_CAM_inference(Cam_generator_inference):
 
-    def __init__(self, param1, param2):
-        super().__init__(param1, param2)
+    def __init__(self, config, test_dataset, sam_enhance):
+        super().__init__(config, test_dataset, sam_enhance)
         self.test_dataset.do_it_without_flows()
 
     def set_log(self):
@@ -99,6 +99,8 @@ class Puzzle_CAM_inference(Cam_generator_inference):
                     sample, gt, path = self.test_dataset[index_for_dataset]
                     hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
                     mask = self.generate_masks(hi_res_cams, sample, gt, visualize = visualize)
+                    if self.sam_enhance:
+                        mask = self.sam_refinemnet(sample, mask)
                     ious.append(self.compute_iou(mask, gt))
                     if save_mask:
                         self.save_masks(mask, path)
@@ -113,6 +115,8 @@ class Puzzle_CAM_inference(Cam_generator_inference):
                     sample, path  = self.test_dataset[index_for_dataset]
                     hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
                     mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                    if self.sam_enhance:
+                        mask = self.sam_refinemnet(sample, mask)
                     if save_mask:
                         self.save_masks(mask, path)
                     else:

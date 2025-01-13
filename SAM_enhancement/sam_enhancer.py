@@ -9,7 +9,7 @@ import skimage.transform as st
 
 
 class SAME:
-    def __init__(self, model_path="sam2.1_t.pt", fast_SAM=False, shape=(512,512)):
+    def __init__(self, model_path="sam2.1_t.pt", fast_SAM=False, shape=(512,512), number_classes=2):
         """
         Parameters:
         -----------
@@ -19,6 +19,27 @@ class SAME:
         else:
             self.model = SAM(model_path)
         self.shape = shape
+        self.merger = MaxIoU_IMP2(number_classes)
+
+    def compute_masks_direct(self, image):
+                
+        # Generate the mask using the SAM model
+        masks = self.model(image)
+        # resize the SAM prediction
+        masks = np.array([st.resize(tmp, self.shape, order=0, preserve_range=True, anti_aliasing=False) for tmp in masks[0].masks.data.cpu().numpy()])
+        return masks
+    
+    def merge_masks_direct(self, masks_sam, mask_original):
+        if(mask_original.shape != self.shape):
+            mask_original = st.resize(mask_original, self.shape, order=0, preserve_range=True, anti_aliasing=False)
+
+        if(masks_sam.shape[1:] != self.shape):
+            masks_sam = np.array([st.resize(tmp, self.shape, order=0, preserve_range=True, anti_aliasing=False) for tmp in masks_sam])
+        
+        mask_enhanced = self.merger.merge(mask_original, masks_sam)
+
+        return mask_enhanced
+
 
     def compute_masks(self, origin_path, destination_path="dataset/SAM_masks"):
         """
@@ -65,7 +86,6 @@ class SAME:
 
 
     def merge_masks(self, origin_path, sam_path, destination_path, number_classes=2):
-        self.merger = MaxIoU_IMP2(number_classes)
         
         # check if the origin path exists  
         if(not os.path.exists(origin_path)):
@@ -118,6 +138,50 @@ class SAME:
                     # Save the mask as a .npz file in the destination folder
                     mask_save_path = os.path.join(destination_dir, name_file_npz)
                     np.savez_compressed(mask_save_path, data=mask_enhanced)
+
+    def plot_file_direct(image, mask, mask_enhanced, mask_gt=None):
+        """
+        Plot the original image, the original mask, the SAM mask, and the enhanced mask.
+
+        Args:
+            image_path (str): Path to the image.
+            mask_path (str): Path to the original mask.
+            mask_enhanced_path (str): Path to the enhanced mask.
+            groundtrugh_path (str): Path to the ground truth mask.
+        """
+        # Load the ground truth mask
+        if mask_gt is not None:
+            mask_gt = st.resize(np.array(mask_gt.convert("L")), mask_enhanced.shape, order=0, preserve_range=True, anti_aliasing=False)
+
+        if mask_gt is None:
+            fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+        else:
+            fig, axs = plt.subplots(1, 4, figsize=(16, 4))
+
+        axs[0].imshow(image)
+        axs[0].set_title("Image")
+        axs[0].axis("off")
+
+        axs[1].imshow(mask, cmap="gray")
+        if mask_gt is None:
+            axs[1].set_title("Original Mask")
+        else:
+            axs[1].set_title("Original Mask (IoU: {:.2f})".format(SAME.compute_iou(mask, mask_gt)))
+        axs[1].axis("off")
+
+        axs[2].imshow(mask_enhanced, cmap="gray")
+        if mask_gt is None:
+            axs[2].set_title("Enhanced Mask")
+        else:
+            axs[2].set_title("Enhanced Mask (IoU: {:.2f})".format(SAME.compute_iou(mask_enhanced, mask_gt)))
+        axs[2].axis("off")
+
+        if mask_gt is not None:
+            axs[3].imshow(mask_gt, cmap="gray")
+            axs[3].set_title("Ground Truth Mask")
+            axs[3].axis("off")
+
+        plt.show()
 
     @staticmethod
     def plot_file(image_path, mask_path, mask_enhanced_path, groundtrugh_path=None):

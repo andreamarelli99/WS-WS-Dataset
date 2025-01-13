@@ -15,11 +15,12 @@ from general_utils.torch_utils import *
 from general_utils.cam_utils import *
 from general_utils.log_utils import *
 from general_utils.io_utils import *
+from SAM_enhancement.sam_enhancer import SAME
 
 
 class Cam_generator_inference:
 
-    def __init__(self, config, test_dataset):
+    def __init__(self, config, test_dataset, sam_enhance = False):
         # Set all attributes from the dictionary
         for key, value in config.items():
             setattr(self, key, value)
@@ -32,6 +33,9 @@ class Cam_generator_inference:
         set_seed(self.seed)
         self.set_log()
         self.set_model()
+        self.sam_enhance = sam_enhance
+        if self.sam_enhance:
+            self.sam_model = SAME(model_path="sam2.1_t.pt")
 
     def compute_iou(self, predicted_mask_binary, ground_truth_mask):
 
@@ -42,11 +46,11 @@ class Cam_generator_inference:
         intersection = np.logical_and(predicted_mask_binary, ground_truth_mask_binary)
         union = np.logical_or(predicted_mask_binary, ground_truth_mask_binary)
 
-        union_sum = torch.sum(union)
+        union_sum = np.sum(union)
         if union_sum == 0:
             iou = 1.0
         else:
-            iou = float(torch.sum(intersection) / union_sum)
+            iou = float(np.sum(intersection) / union_sum)
 
         # Compute IoU
         # iou = float(torch.sum(intersection) / torch.sum(union))
@@ -220,4 +224,22 @@ class Cam_generator_inference:
         directory = create_directory(f'{os.path.dirname(full_path)}/')
 
         np.savez_compressed(full_path, array=msks.cpu())
+
+    def sam_refinemnet(self, np_image, mask_original, gt = None, visualize = False):
+
+        np_image = (self.denormalizer(np_image)*255).astype(np.uint8)
+        pil_image = Image.fromarray(np_image)
+        sam_instace_masks = self.sam_model.compute_masks_direct(pil_image)
+        # print(f'mask_original: {mask_original.shape}')
+        # print(f'sam_instace_masks: {sam_instace_masks}')
+
+        mask_enhanced = self.sam_model.merge_masks_direct(sam_instace_masks, mask_original.cpu().numpy())
+
+        if visualize:
+            SAME.plot_file_direct(pil_image, mask_original, mask_enhanced, gt)
+
+        return mask_enhanced
+
+
+
 
