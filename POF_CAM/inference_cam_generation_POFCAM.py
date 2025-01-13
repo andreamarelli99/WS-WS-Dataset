@@ -142,7 +142,8 @@ class POF_CAM_inference(Cam_generator_inference):
                         else:
                             if index_for_dataset > max_item:
                                 break
-                    print(f'Mean IoU: {np.mean(ious)}')
+                    with open(os.path.join(self.log_dir, f'{self.tag}.txt'), 'w') as file:
+                        file.write(f'Mean IoU: {np.mean(ious)}\n')
 
                 else:
                     
@@ -158,7 +159,8 @@ class POF_CAM_inference(Cam_generator_inference):
                         else:
                             if index_for_dataset > max_item:
                                 break
-                    print(f'Mean IoU: {np.mean(ious)}')
+                    with open(os.path.join(self.log_dir, f'{self.tag}.txt'), 'w') as file:
+                        file.write(f'Mean IoU: {np.mean(ious)}\n')
                 
             else:
 

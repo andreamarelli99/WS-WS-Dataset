@@ -107,7 +107,10 @@ class Puzzle_CAM_inference(Cam_generator_inference):
                     else:
                         if index_for_dataset > max_item:
                             break
-                print(f'Mean IoU: {np.mean(ious)}')
+
+                with open(os.path.join(self.log_dir, f'{self.tag}.txt'), 'w') as file:
+                    file.write(f'Mean IoU: {np.mean(ious)}\n')
+
                 
             else:
 
@@ -115,8 +118,6 @@ class Puzzle_CAM_inference(Cam_generator_inference):
                     sample, path  = self.test_dataset[index_for_dataset]
                     hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
                     mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
-                    if self.sam_enhance:
-                        mask = self.sam_refinemnet(sample, mask)
                     if save_mask:
                         self.save_masks(mask, path)
                     else:
