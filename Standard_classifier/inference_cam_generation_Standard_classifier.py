@@ -209,7 +209,7 @@ class Std_classifier_inference(Cam_generator_inference):
                         if index_for_dataset > max_item:
                             break
                 
-                with open(os.path.join(self.log_dir, f'{self.tag}.txt'), 'w') as file:
+                with open(os.path.join(self.log_dir, f'{self.tag}_sam_{self.sam_enhance}.txt'), 'w') as file:
                     file.write(f'Mean IoU: {np.mean(ious)}\n')
                 
             else:

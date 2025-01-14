@@ -42,9 +42,19 @@ class Cam_generator_inference:
         ground_truth_mask = np.array(ground_truth_mask)/255
         ground_truth_mask_binary = (ground_truth_mask > 0.5).astype(int)
 
+        if isinstance(predicted_mask_binary, torch.Tensor):
+            predicted_mask_binary = predicted_mask_binary.cpu().numpy()
+
         # Calculate the intersection and union
         intersection = np.logical_and(predicted_mask_binary, ground_truth_mask_binary)
         union = np.logical_or(predicted_mask_binary, ground_truth_mask_binary)
+
+        if isinstance(union, torch.Tensor):
+            union_sum = torch.sum(union)
+        else:
+            union_sum = np.sum(union)
+
+
 
         union_sum = np.sum(union)
         if union_sum == 0:
