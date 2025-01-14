@@ -4,8 +4,10 @@ __pycache__/
 **/experiments/
 *.py[cod]
 *$py.class
-experiments.ipynb
+*.ipynb
 *.zip
+*.pt
+*.pth
 
 # C extensions
 *.so
