@@ -43,16 +43,17 @@ class Cam_generator_inference:
         ground_truth_mask_binary = (ground_truth_mask > 0.5).astype(int)
 
         if isinstance(predicted_mask_binary, torch.Tensor):
-            predicted_mask_binary = predicted_mask_binary.cpu().numpy()
+            predicted_mask_binary = predicted_mask_binary.cpu().detach().numpy()
+            # print("HEY")
 
         # Calculate the intersection and union
         intersection = np.logical_and(predicted_mask_binary, ground_truth_mask_binary)
         union = np.logical_or(predicted_mask_binary, ground_truth_mask_binary)
 
-        if isinstance(union, torch.Tensor):
-            union_sum = torch.sum(union)
-        else:
-            union_sum = np.sum(union)
+        # if isinstance(union, torch.Tensor):
+        #     union_sum = torch.sum(union)
+        # else:
+        #     union_sum = np.sum(union)
 
 
 
@@ -176,7 +177,7 @@ class Cam_generator_inference:
 
         mask_visualized = (max_map_index == 1).int()
         
-        return mask_visualized.cpu()
+        return mask_visualized.cpu().detach()
 
         
     def visualize_cams(self, sample, hi_res_cams, mask = None):
@@ -226,22 +227,24 @@ class Cam_generator_inference:
 
     def save_masks(self, msks, ori_path):
 
-        _, rel_path = ori_path.split("images/", 1)
+        if any(keyword in ori_path for keyword in ["images", "training", "validation"]):
+            dir_to_save = next(keyword for keyword in ["images", "training", "validation"] if keyword in ori_path)
+
+
+        _, rel_path = ori_path.split(dir_to_save + "/", 1)
         rel_path = rel_path.replace(".jpg", ".npz")    
 
-        full_path = os.path.join(self.cam_dir,'maps', rel_path)
+        full_path = os.path.join(self.cam_dir,f'{dir_to_save}_maps', rel_path)
         
         directory = create_directory(f'{os.path.dirname(full_path)}/')
 
-        np.savez_compressed(full_path, array=msks.cpu())
+        np.savez_compressed(full_path, array=msks)
 
     def sam_refinemnet(self, np_image, mask_original, gt = None, visualize = False):
 
         np_image = (self.denormalizer(np_image)*255).astype(np.uint8)
         pil_image = Image.fromarray(np_image)
         sam_instace_masks = self.sam_model.compute_masks_direct(pil_image)
-        # print(f'mask_original: {mask_original.shape}')
-        # print(f'sam_instace_masks: {sam_instace_masks}')
 
         mask_enhanced = self.sam_model.merge_masks_direct(sam_instace_masks, mask_original.cpu().numpy())
 

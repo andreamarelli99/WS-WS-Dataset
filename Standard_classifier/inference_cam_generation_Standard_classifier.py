@@ -41,8 +41,16 @@ class Std_classifier_inference(Cam_generator_inference):
         self.test_dataset.do_it_without_flows()
         self.preprocessing = ToTensor()
 
+        # self.methods = {
+        #     "GradCAM": GradCAM(model=self.cam_model, target_layers=self.target_layers),
+        #     "GradCAM++": GradCAMPlusPlus(model=self.cam_model, target_layers=self.target_layers),
+        #     "LayerCAM": LayerCAM(model=self.cam_model, target_layers=self.target_layers)
+        # }
+
+
+
     def set_log(self):
-        self.log_dir = create_directory(f'./experiments/GradCAM/log/inference/')
+        self.log_dir = create_directory(f'./experiments/GradCAM/logs/inference/')
         self.cam_dir = create_directory(f'./experiments/GradCAM/cams/')     #  /mnt/datasets_1/andream99/GradCAM/cams/     ./experiments/GradCAM/cams/
         self.log_func = lambda string='': print(string)
     
@@ -189,9 +197,7 @@ class Std_classifier_inference(Cam_generator_inference):
 
     def make_all_cams(self, save_mask = True, visualize = False, norm = True, max_item = 10):
 
-        # with torch.no_grad():
-
-            if self.test_dataset.get_whith_mask_bool():
+            if hasattr(self.test_dataset, 'get_whith_mask_bool') and self.test_dataset.get_whith_mask_bool():
 
                 ious = []
                     
@@ -206,11 +212,11 @@ class Std_classifier_inference(Cam_generator_inference):
                     if save_mask:
                         self.save_masks(mask, path)
                     else:
-                        if index_for_dataset > max_item:
+                        if index_for_dataset + 1 >= max_item:
                             break
                 
                 with open(os.path.join(self.log_dir, f'{self.tag}_sam_{self.sam_enhance}.txt'), 'w') as file:
-                    file.write(f'Mean IoU: {np.mean(ious)}\n')
+                    file.write(f'GradCAM\nMean IoU: {np.mean(ious)}\nsamenhance: {self.sam_enhance}\nnormalize: {norm}')
                 
             else:
 
@@ -223,7 +229,7 @@ class Std_classifier_inference(Cam_generator_inference):
                     if save_mask:
                         self.save_masks(mask, path)
                     else:
-                        if index_for_dataset > max_item:
+                        if index_for_dataset + 1 >= max_item:
                             break
 
 

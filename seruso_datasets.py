@@ -76,7 +76,7 @@ class CamFlowDataset(data.Dataset):
                  transform: Optional[Callable] = None,
                  augment = False,
                  return_path = False, 
-                 return_img_path=  False,
+                 return_img_path = False, 
                  with_flow = False):
 
         self.return_path = return_path
@@ -145,7 +145,11 @@ class CamFlowDataset(data.Dataset):
                 img2 = self.transform(img2)
                 img3 = self.transform(img3)
 
-                return [img1, img2, img3], [flow1, flow2], label, params
+                if self.return_img_path:
+                    return [img1, img2, img3], [flow1, flow2], params, self.image_list[index][1]
+                
+                else:
+                    return [img1, img2, img3], [flow1, flow2], label, params
         
         
             else:
@@ -154,7 +158,10 @@ class CamFlowDataset(data.Dataset):
                 img2 = self.transform(img2)
                 img3 = self.transform(img3)
 
-                return [img1, img2, img3], [flow1, flow2], label
+                if self.return_img_path:
+                    return [img1, img2, img3], [flow1, flow2], self.image_list[index][1]
+                else:
+                    return [img1, img2, img3], [flow1, flow2], label
         
         else:
 
@@ -164,8 +171,12 @@ class CamFlowDataset(data.Dataset):
                 img = self.transform(img)
 
             label = torch_utils.one_hot_embedding(self.class_dic[self.label_list[index]], self.classes)
-            
-            return img, label
+
+            if self.return_img_path:
+                return img, self.image_list[index][1]
+
+            else:
+                return img, label
 
 
     def __len__(self):
@@ -188,13 +199,15 @@ class Seruso_three_classes_flow(CamFlowDataset):
     def __init__(self, 
                  img_root = '../../../../Datasets/SERUSO_DATASETS/main_dataset/Before_after_no_backgrounds/',
                  flow_root = '../../../../Datasets/SERUSO_DATASETS/main_dataset/optical_flows/',
+                 classes_subfolders = ['before', 'after'],
                  dstype = 'training', 
                  transform: Optional[Callable] = None,
                  augment = False,
                  loader: Callable[[str], Any] = pil_loader,
+                 return_img_path = False, 
                  with_flow = False):
         
-        super(Seruso_three_classes_flow, self).__init__(transform = transform, augment = augment, loader = loader, with_flow = with_flow)
+        super(Seruso_three_classes_flow, self).__init__(transform = transform, augment = augment, loader = loader, return_img_path = return_img_path, with_flow = with_flow)
 
         self.img_root = img_root
         self.dstype = dstype
@@ -207,6 +220,8 @@ class Seruso_three_classes_flow(CamFlowDataset):
         self.class_dic = {}
 
         for class_name in sorted(os.listdir(os.path.join(img_root, img_dir))):
+
+          if class_name in classes_subfolders:
 
             self.class_names.append(class_name)
             self.class_dic[class_name] = len(self.class_dic)

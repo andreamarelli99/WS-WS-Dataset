@@ -3,7 +3,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -24,32 +23,6 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 
-# config = {
-#     'seed': 42,
-#     'num_workers': 4,
-#     'architecture': 'resnet50',
-#     'mode': 'normal',
-#     'batch_size': 32,
-#     'max_epoch': 25,
-#     'lr': 0.1,
-#     'wd': 1e-4,
-#     'nesterov': True,
-#     'image_size': 512,
-#     'print_ratio': 0.1,
-#     'augment': 'colorjitter',
-#     're_loss_option': 'masking',
-#     're_loss': 'L1_Loss',
-#     'alpha_schedule': 0.0,
-#     'glob_alpha': 2.0,
-#     'beta_schedule': 0.0,
-#     'glob_beta': 6.0,
-#     'num_pieces': 4,
-#     'loss_option': 'cl_pcl_re',
-#     'imagenet_mean': [0.485, 0.456, 0.406],
-#     'imagenet_std': [0.229, 0.224, 0.225],
-#     'level' : 'feature',  # 'feature'  'cam'
-#     'optimizer': 'adam' # 'SGD'  'adam'
-# }
 
 config = {
     'seed': 42,
@@ -62,23 +35,17 @@ config = {
     'scales' : '0.2, 0.5, 1.0, 2.0, 4.0, 6.0',
     'imagenet_mean': [0.485, 0.456, 0.406],
     'imagenet_std': [0.229, 0.224, 0.225],
-    'with_flows': False,
-    'with_mask': False
+    'with_flows': True,
+    'with_mask': True
 }
 
 
-num_workers = 4
+root_with_temporal_labels = '../../Datasets/SERUSO_DATASETS/test_set'
 
-
-dataset_dir_main = '../../Datasets/SERUSO_DATASETS/main_dataset/Before_after_no_backgrounds/' # main_dataset/Before_after_no_backgrounds/' # new_5000/three_classes_5000/ #    Before_after_dataset_1240
-flow_dir_main = '../../Datasets/SERUSO_DATASETS/main_dataset/optical_flows/' # main_dataset/optical_flows/' # new_5000/optical_flows_5000/ #    Before_after_dataset_1240
-
-dataset_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/three_classes_5000/'
-flow_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/optical_flows_5000/'
-
-
-# batch_size = config['batch_size']
+batch_size = 64
 image_size = 512
+
+augment = 'colorjitter' #'colorjitter'
 
 imagenet_mean = [0.485, 0.456, 0.406]
 imagenet_std = [0.229, 0.224, 0.225]
@@ -93,16 +60,10 @@ test_transform = transforms.Compose([
     Normalize(imagenet_mean, imagenet_std),
 ])
 
-
-# Remake the test tranform, right now using no augmentation
-
-train_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, classes_subfolders = ['before'], return_img_path = True, dstype = 'training', transform = test_transform, augment = False)
-val_dataset = seruso_datasets.Seruso_three_classes_flow(img_root = dataset_dir_5000, flow_root = flow_dir_5000, classes_subfolders = ['before'], return_img_path = True, dstype = 'validation', transform = test_transform, augment = False)
-
-
 normalize_for_cams = True
 
-class_names = np.asarray(train_dataset.class_names)
+
+test_dataset = seruso_datasets.SerusoTestDataset(img_root = root_with_temporal_labels, classes_subfolders = ['after'], transform= test_transform, with_flow = config['with_flows'], with_mask = config['with_mask'])
 
 print("\n\nStandard_with_sam\n\n")
 
@@ -113,29 +74,42 @@ filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.
 for filen in filenames:
     config['tag'] = filen
     print(filen)
-    std_classifier = Std_classifier_inference(config, train_dataset, sam_enhance = True)
-    std_classifier.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
+    std_classifier = Std_classifier_inference(config, test_dataset, sam_enhance = True)
+    std_classifier.make_all_cams(save_mask = False, visualize = False, norm = normalize_for_cams, max_item = 100000)
 
-print("\n\nPuzzle\n\n")
 
-folder_path = 'experiments/Puzzle-CAM/models/'  # Replace with your folder path
+print("\n\nStandard\n\n")
 
-filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-
-for filen in filenames:
-    config['tag'] = filen
-    print(filen)
-    puzzle_cam = Puzzle_CAM_inference(config, train_dataset, sam_enhance = False)
-    puzzle_cam.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
-
-print("\n\nPOF\n\n")
-folder_path = 'experiments/POF-CAM/models/'  # Replace with your folder path
+folder_path = 'experiments/GradCAM/models/'  # Replace with your folder path
 
 filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
 
 for filen in filenames:
     config['tag'] = filen
     print(filen)
+    std_classifier = Std_classifier_inference(config, test_dataset, sam_enhance = False)
+    std_classifier.make_all_cams(save_mask = False, visualize = False, norm = normalize_for_cams, max_item = 100000)
+
+# print("\n\nPuzzle\n\n")
+
+# folder_path = 'experiments/Puzzle-CAM/models/'  # Replace with your folder path
+
+# filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+# for filen in filenames:
+#     config['tag'] = filen
+#     print(filen)
+#     puzzle_cam = Puzzle_CAM_inference(config, test_dataset, sam_enhance = True)
+#     puzzle_cam.make_all_cams(save_mask = False, visualize = False, norm = normalize_for_cams, max_item = 100000)
+
+# print("\n\nPOF\n\n")
+# folder_path = 'experiments/POF-CAM/models/'  # Replace with your folder path
+
+# filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+# for filen in filenames:
+#     config['tag'] = filen
+#     print(filen)
         
-    pof_cam = POF_CAM_inference(config, train_dataset, sam_enhance = True)
-    pof_cam.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
+#     pof_cam = POF_CAM_inference(config, test_dataset, sam_enhance = True)
+#     pof_cam.make_all_cams(save_mask = False, visualize = False, norm = normalize_for_cams, max_item = 100000)

@@ -39,7 +39,7 @@ class Puzzle_CAM_inference(Cam_generator_inference):
         self.test_dataset.do_it_without_flows()
 
     def set_log(self):
-        self.log_dir = create_directory(f'./experiments/Puzzle-CAM/log/inference/')
+        self.log_dir = create_directory(f'./experiments/Puzzle-CAM/logs/inference/')
         self.cam_dir = create_directory(f'./experiments/Puzzle-CAM/cams/')
         self.log_func = lambda string='': print(string)
     
@@ -91,25 +91,33 @@ class Puzzle_CAM_inference(Cam_generator_inference):
 
         with torch.no_grad():
 
-            if self.test_dataset.get_whith_mask_bool():
+            if hasattr(self.test_dataset, 'get_whith_mask_bool') and self.test_dataset.get_whith_mask_bool():
                     
                 ious = []
+                ious_sam = []
 
                 for index_for_dataset in range(len(self.test_dataset)):
                     sample, gt, path = self.test_dataset[index_for_dataset]
                     hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
                     mask = self.generate_masks(hi_res_cams, sample, gt, visualize = visualize)
+                    ious.append(self.compute_iou(mask, gt))
+
                     if self.sam_enhance:
                         mask = self.sam_refinemnet(sample, mask)
-                    ious.append(self.compute_iou(mask, gt))
+                        ious_sam.append(self.compute_iou(mask, gt))
+
                     if save_mask:
                         self.save_masks(mask, path)
                     else:
-                        if index_for_dataset > max_item:
+                        if index_for_dataset + 1 >= max_item:
                             break
 
-                with open(os.path.join(self.log_dir, f'{self.tag}_sam_{self.sam_enhance}.txt'), 'w') as file:
-                    file.write(f'Mean IoU: {np.mean(ious)}\n')
+                with open(os.path.join(self.log_dir, f'{self.tag}_sam_{False}.txt'), 'w') as file:
+                    file.write(f'PuzzleCAM\nMean IoU: {np.mean(ious)}\nsamenhance: {False}\nnormalize: {norm}\n')
+
+                with open(os.path.join(self.log_dir, f'{self.tag}_sam_{True}.txt'), 'w') as file:
+                    file.write(f'PuzzleCAM\nMean IoU: {np.mean(ious_sam)}\nsamenhance: {True}\nnormalize: {norm}\n')
+                
 
                 
             else:
@@ -118,10 +126,12 @@ class Puzzle_CAM_inference(Cam_generator_inference):
                     sample, path  = self.test_dataset[index_for_dataset]
                     hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
                     mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
+                    if self.sam_enhance:
+                        mask = self.sam_refinemnet(sample, mask)
                     if save_mask:
                         self.save_masks(mask, path)
                     else:
-                        if index_for_dataset > max_item:
+                        if index_for_dataset + 1 >= max_item:
                             break
 
 
