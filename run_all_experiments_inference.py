@@ -20,7 +20,7 @@ from Standard_classifier.inference_cam_generation_Standard_classifier import Std
 
 
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 
@@ -73,7 +73,7 @@ num_workers = 4
 dataset_dir_main = '../../Datasets/SERUSO_DATASETS/main_dataset/Before_after_no_backgrounds/' # main_dataset/Before_after_no_backgrounds/' # new_5000/three_classes_5000/ #    Before_after_dataset_1240
 flow_dir_main = '../../Datasets/SERUSO_DATASETS/main_dataset/optical_flows/' # main_dataset/optical_flows/' # new_5000/optical_flows_5000/ #    Before_after_dataset_1240
 
-dataset_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/three_classes_5000/'
+dataset_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/bef_aft_5000/'# three_classes_5000/'
 flow_dir_5000 = '../../Datasets/SERUSO_DATASETS/new_5000/optical_flows_5000/'
 
 
@@ -104,7 +104,7 @@ normalize_for_cams = True
 
 class_names = np.asarray(train_dataset.class_names)
 
-print("\n\nStandard_with_sam\n\n")
+print("\n\nStandard\n\n")
 
 folder_path = 'experiments/GradCAM/models/'  # Replace with your folder path
 
@@ -116,26 +116,67 @@ for filen in filenames:
     std_classifier = Std_classifier_inference(config, train_dataset, sam_enhance = True)
     std_classifier.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
 
-print("\n\nPuzzle\n\n")
+print("\n\nStandard_validation\n\n")
 
-folder_path = 'experiments/Puzzle-CAM/models/'  # Replace with your folder path
-
-filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-
-for filen in filenames:
-    config['tag'] = filen
-    print(filen)
-    puzzle_cam = Puzzle_CAM_inference(config, train_dataset, sam_enhance = False)
-    puzzle_cam.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
-
-print("\n\nPOF\n\n")
-folder_path = 'experiments/POF-CAM/models/'  # Replace with your folder path
+folder_path = 'experiments/GradCAM/models/'  # Replace with your folder path
 
 filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
 
 for filen in filenames:
     config['tag'] = filen
     print(filen)
+    std_classifier = Std_classifier_inference(config, val_dataset, sam_enhance = True)
+    std_classifier.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
+
+# print("\n\nPuzzle\n\n")
+
+# folder_path = 'experiments/Puzzle-CAM/models/'  # Replace with your folder path
+
+# filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+# for filen in filenames:
+#     config['tag'] = filen
+#     print(filen)
+#     puzzle_cam = Puzzle_CAM_inference(config, train_dataset, sam_enhance = False)
+#     puzzle_cam.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
+
+
+# print("\n\nPuzzle_validation\n\n")
+
+# folder_path = 'experiments/Puzzle-CAM/models/'  # Replace with your folder path
+
+# filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+# for filen in filenames:
+#     config['tag'] = filen
+#     print(filen)
+#     puzzle_cam = Puzzle_CAM_inference(config, val_dataset, sam_enhance = False)
+#     puzzle_cam.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
+
+
+# print("\n\nPOF\n\n")
+# folder_path = 'experiments/POF-CAM/models/'  # Replace with your folder path
+
+# filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+# for filen in filenames:
+#     config['tag'] = filen
+#     print(filen)
         
-    pof_cam = POF_CAM_inference(config, train_dataset, sam_enhance = True)
-    pof_cam.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
+#     pof_cam = POF_CAM_inference(config, train_dataset, sam_enhance = True)
+#     pof_cam.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
+
+# print("\n\nPOF_validation\n\n")
+# folder_path = 'experiments/POF-CAM/models/'  # Replace with your folder path
+
+# filenames = [os.path.splitext(f)[0] for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+# for filen in filenames:
+#     config['tag'] = filen
+#     print(filen)
+        
+#     pof_cam = POF_CAM_inference(config, val_dataset, sam_enhance = True)
+#     pof_cam.make_all_cams(save_mask = True, visualize = False, norm = normalize_for_cams, max_item = 10000)
+
+
+print("\n\nEND\n\n")

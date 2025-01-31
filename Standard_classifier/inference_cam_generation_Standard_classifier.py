@@ -16,6 +16,7 @@ import torchvision.models as models
 import seruso_datasets
 
 from torchvision import transforms
+from tqdm import tqdm
 
 from inference_cam_generation import Cam_generator_inference
 
@@ -36,22 +37,16 @@ from gradCAM_core.pytorch_grad_cam.metrics.road import *
 
 class Std_classifier_inference(Cam_generator_inference):
 
-    def __init__(self, config, test_dataset, sam_enhance ):
+    def __init__(self, config, test_dataset, sam_enhance, method):
+        self.method = method
         super().__init__(config, test_dataset, sam_enhance)
         self.test_dataset.do_it_without_flows()
         self.preprocessing = ToTensor()
 
-        # self.methods = {
-        #     "GradCAM": GradCAM(model=self.cam_model, target_layers=self.target_layers),
-        #     "GradCAM++": GradCAMPlusPlus(model=self.cam_model, target_layers=self.target_layers),
-        #     "LayerCAM": LayerCAM(model=self.cam_model, target_layers=self.target_layers)
-        # }
-
-
 
     def set_log(self):
-        self.log_dir = create_directory(f'./experiments/GradCAM/logs/inference/')
-        self.cam_dir = create_directory(f'./experiments/GradCAM/cams/')     #  /mnt/datasets_1/andream99/GradCAM/cams/     ./experiments/GradCAM/cams/
+        self.log_dir = create_directory(f'./experiments/{self.method}/logs/inference/')
+        self.cam_dir = create_directory(f'./experiments/{self.method}/cams/')     #  /mnt/datasets_1/andream99/GradCAM/cams/     ./experiments/GradCAM/cams/
         self.log_func = lambda string='': print(string)
     
     def set_model(self):
@@ -146,7 +141,15 @@ class Std_classifier_inference(Cam_generator_inference):
         # Set the random seed
         np.random.seed(42)
 
-        cam_method = GradCAM(model=self.cam_model, target_layers=self.target_layers) #, use_cuda=True)
+        if self.method == "GradCAM":
+            cam_method = GradCAM(model=self.cam_model, target_layers=self.target_layers)
+
+        elif self.method == "GradCAMPlusPlus":
+            cam_method = GradCAMPlusPlus(model=self.cam_model, target_layers=self.target_layers)
+
+        elif self.method == "LayerCAM":
+            cam_method = LayerCAM(model=self.cam_model, target_layers=self.target_layers)
+        
 
         # cam_metric = ROADCombined(percentiles=[20, 40, 60, 80])
 
@@ -197,11 +200,19 @@ class Std_classifier_inference(Cam_generator_inference):
 
     def make_all_cams(self, save_mask = True, visualize = False, norm = True, max_item = 10):
 
+
             if hasattr(self.test_dataset, 'get_whith_mask_bool') and self.test_dataset.get_whith_mask_bool():
+
+                _, _, pth = self.test_dataset[0]
+
+                if "training" in pth:
+                    train_or_val = "training"
+                else:
+                    train_or_val = "validation"
 
                 ious = []
                     
-                for index_for_dataset in range(len(self.test_dataset)):
+                for index_for_dataset in tqdm(range(len(self.test_dataset)), desc=f"Processing {train_or_val}"):
                     
                     sample, gt, path = self.test_dataset[index_for_dataset]
                     hi_res_cams  = self.generate_cams_with_std_method(sample, self.scales, normalize = norm)
@@ -216,11 +227,18 @@ class Std_classifier_inference(Cam_generator_inference):
                             break
                 
                 with open(os.path.join(self.log_dir, f'{self.tag}_sam_{self.sam_enhance}.txt'), 'w') as file:
-                    file.write(f'GradCAM\nMean IoU: {np.mean(ious)}\nsamenhance: {self.sam_enhance}\nnormalize: {norm}')
+                    file.write(f'{self.method}\nMean IoU: {np.mean(ious)}\nsamenhance: {self.sam_enhance}\nnormalize: {norm}')
                 
             else:
 
-                for index_for_dataset in range(len(self.test_dataset)):
+                _, pth = self.test_dataset[0]
+
+                if "training" in pth:
+                    train_or_val = "training"
+                else:
+                    train_or_val = "validation"
+
+                for index_for_dataset in tqdm(range(len(self.test_dataset)), desc=f"Processing {train_or_val}"):
                     sample, path  = self.test_dataset[index_for_dataset]
                     hi_res_cams  = self.generate_cams_with_std_method(sample, self.scales, normalize = norm)
                     mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)

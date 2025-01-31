@@ -140,28 +140,88 @@ class SAME:
                     np.savez_compressed(mask_save_path, data=mask_enhanced)
 
     def plot_file_direct(image, mask, mask_enhanced, mask_gt=None):
-        """
-        Plot the original image, the original mask, the SAM mask, and the enhanced mask.
+        # """
+        # Plot the original image, the original mask, the SAM mask, and the enhanced mask.
 
-        Args:
-            image_path (str): Path to the image.
-            mask_path (str): Path to the original mask.
-            mask_enhanced_path (str): Path to the enhanced mask.
-            groundtrugh_path (str): Path to the ground truth mask.
+        # Args:
+        #     image_path (str): Path to the image.
+        #     mask_path (str): Path to the original mask.
+        #     mask_enhanced_path (str): Path to the enhanced mask.
+        #     groundtrugh_path (str): Path to the ground truth mask.
+        # """
+        # # Load the ground truth mask
+        # if mask_gt is not None:
+        #     mask_gt = st.resize(np.array(mask_gt.convert("L")), mask_enhanced.shape, order=0, preserve_range=True, anti_aliasing=False)
+
+        # if mask_gt is None:
+        #     fig, axs = plt.subplots(1, 3, figsize=(12, 4), dpi=100)
+        # else:
+        #     fig, axs = plt.subplots(1, 4, figsize=(16, 4), dpi=100)
+
+        # axs[0].imshow(image)
+        # axs[0].set_title("Image")
+        # axs[0].axis("off")
+
+        # axs[1].imshow(mask, cmap="gray")
+        # if mask_gt is None:
+        #     axs[1].set_title("Original Mask")
+        # else:
+        #     axs[1].set_title("Original Mask (IoU: {:.2f})".format(SAME.compute_iou(mask, mask_gt)))
+        # axs[1].axis("off")
+
+        # axs[2].imshow(mask_enhanced, cmap="gray")
+        # if mask_gt is None:
+        #     axs[2].set_title("Enhanced Mask")
+        # else:
+        #     axs[2].set_title("Enhanced Mask (IoU: {:.2f})".format(SAME.compute_iou(mask_enhanced, mask_gt)))
+        # axs[2].axis("off")
+
+        # if mask_gt is not None:
+        #     axs[3].imshow(mask_gt, cmap="gray")
+        #     axs[3].set_title("Ground Truth Mask")
+        #     axs[3].axis("off")
+
+        # plt.show()
+
+
+
         """
-        # Load the ground truth mask
+            Plot the original image, the original mask, the SAM mask, and the enhanced mask in full resolution.
+
+            Args:
+                image (ndarray): The image to be displayed.
+                mask (ndarray): The original mask to be displayed.
+                mask_enhanced (ndarray): The enhanced mask to be displayed.
+                mask_gt (ndarray): The ground truth mask to be displayed.
+        """
+        # Example: Assuming `image`, `mask`, `mask_enhanced`, and `mask_gt` are loaded arrays.
+        # Replace these with actual loading code.
+        # e.g., image = np.array(Image.open(image_path))
+
+        # Resize `mask_gt` if it exists
         if mask_gt is not None:
-            mask_gt = st.resize(np.array(mask_gt.convert("L")), mask_enhanced.shape, order=0, preserve_range=True, anti_aliasing=False)
+            mask_gt = st.resize(
+                np.array(mask_gt.convert("L")), mask_enhanced.shape,
+                order=0, preserve_range=True, anti_aliasing=False
+            )
 
-        if mask_gt is None:
-            fig, axs = plt.subplots(1, 3, figsize=(12, 4))
-        else:
-            fig, axs = plt.subplots(1, 4, figsize=(16, 4))
+        # Get image dimensions for figure size calculation
+        height, width = image.size  #shape[:2]
+        dpi = 100  # Dots per inch (adjust as necessary)
 
+        # Determine the number of subplots based on the availability of `mask_gt`
+        num_subplots = 4 if mask_gt is not None else 3
+        figsize = (width * num_subplots / dpi, height / dpi)
+
+        # Create subplots with the appropriate size
+        fig, axs = plt.subplots(1, num_subplots, figsize=figsize, dpi=dpi)
+
+        # Plot the original image
         axs[0].imshow(image)
         axs[0].set_title("Image")
         axs[0].axis("off")
 
+        # Plot the original mask
         axs[1].imshow(mask, cmap="gray")
         if mask_gt is None:
             axs[1].set_title("Original Mask")
@@ -169,6 +229,7 @@ class SAME:
             axs[1].set_title("Original Mask (IoU: {:.2f})".format(SAME.compute_iou(mask, mask_gt)))
         axs[1].axis("off")
 
+        # Plot the enhanced mask
         axs[2].imshow(mask_enhanced, cmap="gray")
         if mask_gt is None:
             axs[2].set_title("Enhanced Mask")
@@ -176,12 +237,16 @@ class SAME:
             axs[2].set_title("Enhanced Mask (IoU: {:.2f})".format(SAME.compute_iou(mask_enhanced, mask_gt)))
         axs[2].axis("off")
 
+        # Plot the ground truth mask if available
         if mask_gt is not None:
             axs[3].imshow(mask_gt, cmap="gray")
             axs[3].set_title("Ground Truth Mask")
             axs[3].axis("off")
 
+        # Adjust layout and display the plot
+        plt.tight_layout()
         plt.show()
+
 
     @staticmethod
     def plot_file(image_path, mask_path, mask_enhanced_path, groundtrugh_path=None):

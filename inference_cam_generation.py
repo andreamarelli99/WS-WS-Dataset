@@ -234,7 +234,7 @@ class Cam_generator_inference:
         _, rel_path = ori_path.split(dir_to_save + "/", 1)
         rel_path = rel_path.replace(".jpg", ".npz")    
 
-        full_path = os.path.join(self.cam_dir,f'{dir_to_save}_maps', rel_path)
+        full_path = os.path.join(self.cam_dir,f'{dir_to_save}', rel_path)
         
         directory = create_directory(f'{os.path.dirname(full_path)}/')
 

@@ -138,7 +138,7 @@ class POF_CAM_inference(Cam_generator_inference):
                         ious.append(self.compute_iou(mask, gt))
 
                         if self.sam_enhance:
-                            mask = self.sam_refinemnet(sample, mask)
+                            mask = self.sam_refinemnet(sample, mask, visualize = visualize)
                             ious_sam.append(self.compute_iou(mask, gt))
 
                         if save_mask:
@@ -150,8 +150,12 @@ class POF_CAM_inference(Cam_generator_inference):
                     with open(os.path.join(self.log_dir, f'{self.tag}_sam_{False}.txt'), 'w') as file:
                         file.write(f'POF-CAM\nMean IoU: {np.mean(ious)}\nsamenhance: {False}\nnormalize: {norm}\nwith_flows: {self.test_dataset.get_whith_flows_bool}')
 
+                    print(f'POF-CAM\nMean IoU: {np.mean(ious)}\nsamenhance: {False}\nnormalize: {norm}\nwith_flows: {self.test_dataset.get_whith_flows_bool}')
+
                     with open(os.path.join(self.log_dir, f'{self.tag}_sam_{True}.txt'), 'w') as file:
                         file.write(f'POF-CAM\nMean IoU: {np.mean(ious_sam)}\nsamenhance: {True}\nnormalize: {norm}\nwith_flows: {self.test_dataset.get_whith_flows_bool}')
+
+                    print(f'POF-CAM\nMean IoU: {np.mean(ious_sam)}\nsamenhance: {True}\nnormalize: {norm}\nwith_flows: {self.test_dataset.get_whith_flows_bool}')
                 else:
                     
                     for index_for_dataset in range(len(self.test_dataset)):
@@ -161,7 +165,7 @@ class POF_CAM_inference(Cam_generator_inference):
                         ious.append(self.compute_iou(mask, gt))
 
                         if self.sam_enhance:
-                            mask = self.sam_refinemnet(sample, mask)
+                            mask = self.sam_refinemnet(sample, mask, visualize = visualize)
                             ious_sam.append(self.compute_iou(mask, gt))
 
                         if save_mask:
@@ -185,7 +189,7 @@ class POF_CAM_inference(Cam_generator_inference):
                         hi_res_cams = self.generate_cams_lateral(left_s, sample, right_s, flows, self.scales, self.cam_model)
                         mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
                         if self.sam_enhance:
-                            mask = self.sam_refinemnet(sample, mask)
+                            mask = self.sam_refinemnet(sample, mask, visualize = visualize)
                         if not visualize:
                             self.save_masks(mask, path)
                         else:
@@ -198,7 +202,7 @@ class POF_CAM_inference(Cam_generator_inference):
                         hi_res_cams  = generate_cams(sample, self.cam_model, self.scales, normalize = norm)
                         mask = self.generate_masks(hi_res_cams, sample, visualize = visualize)
                         if self.sam_enhance:
-                            mask = self.sam_refinemnet(sample, mask)
+                            mask = self.sam_refinemnet(sample, mask, visualize = visualize)
                         if not visualize:
                             self.save_masks(mask, path)
                         else:
