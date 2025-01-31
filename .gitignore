@@ -2,12 +2,15 @@
 __pycache__/
 **/__pycache__/
 **/experiments/
+**/lightning_logs/
 *.py[cod]
 *$py.class
 *.ipynb
 *.zip
 *.pt
 *.pth
+*.ckpt
+
 
 # C extensions
 *.so
