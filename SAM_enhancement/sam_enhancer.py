@@ -140,50 +140,6 @@ class SAME:
                     np.savez_compressed(mask_save_path, data=mask_enhanced)
 
     def plot_file_direct(image, mask, mask_enhanced, mask_gt=None):
-        # """
-        # Plot the original image, the original mask, the SAM mask, and the enhanced mask.
-
-        # Args:
-        #     image_path (str): Path to the image.
-        #     mask_path (str): Path to the original mask.
-        #     mask_enhanced_path (str): Path to the enhanced mask.
-        #     groundtrugh_path (str): Path to the ground truth mask.
-        # """
-        # # Load the ground truth mask
-        # if mask_gt is not None:
-        #     mask_gt = st.resize(np.array(mask_gt.convert("L")), mask_enhanced.shape, order=0, preserve_range=True, anti_aliasing=False)
-
-        # if mask_gt is None:
-        #     fig, axs = plt.subplots(1, 3, figsize=(12, 4), dpi=100)
-        # else:
-        #     fig, axs = plt.subplots(1, 4, figsize=(16, 4), dpi=100)
-
-        # axs[0].imshow(image)
-        # axs[0].set_title("Image")
-        # axs[0].axis("off")
-
-        # axs[1].imshow(mask, cmap="gray")
-        # if mask_gt is None:
-        #     axs[1].set_title("Original Mask")
-        # else:
-        #     axs[1].set_title("Original Mask (IoU: {:.2f})".format(SAME.compute_iou(mask, mask_gt)))
-        # axs[1].axis("off")
-
-        # axs[2].imshow(mask_enhanced, cmap="gray")
-        # if mask_gt is None:
-        #     axs[2].set_title("Enhanced Mask")
-        # else:
-        #     axs[2].set_title("Enhanced Mask (IoU: {:.2f})".format(SAME.compute_iou(mask_enhanced, mask_gt)))
-        # axs[2].axis("off")
-
-        # if mask_gt is not None:
-        #     axs[3].imshow(mask_gt, cmap="gray")
-        #     axs[3].set_title("Ground Truth Mask")
-        #     axs[3].axis("off")
-
-        # plt.show()
-
-
 
         """
             Plot the original image, the original mask, the SAM mask, and the enhanced mask in full resolution.
@@ -377,17 +333,3 @@ class MaxIoU_IMP2():
 
         
         return processed_mask
-        #plt.show()
-
-
-
-
-# merge = Merger(args.merge_type)
-# segmentation_prediction = []
-
-# for image_path in data_path_list:
-#     # loads cam
-#     computed_cam = etl.load_npy(os.path.join(args.path_prefix_output, args.data_folder_name, 'cam', args.cam_type), os.path.join(os.path.basename(image_path)+'.npy'))
-#     # loads sam
-#     # TODO: loads sam
-#     segmentation_prediction.append(merge.merge(input_cam=computed_cam, input_sam=computed_sam))
