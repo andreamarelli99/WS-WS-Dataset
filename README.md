@@ -1,14 +1,8 @@
 # WS-WS: Weakly Supervised Waste Sorting Benchmark
 
-This repository contains the official benchmark implementation for the paper:
-
-**WS-WS: Weakly Supervised Waste Sorting**  
-Andrea Marelli, Alberto Foresti, Leonardo Pesce, Mario Grosso, Giacomo Boracchi  
-[Politecnico di Milano, DEIB], [EURECOM, Data Science Department]
-
 ## Overview
-This repository provides scripts for training and evaluating weakly supervised segmentation models for waste sorting. It includes implementations for:
-- **Standard Classifier**
+This repository provides scripts for training and evaluating weakly supervised segmentation models for the Seruso Dataset. It includes implementations for:
+- **Standard Classifier (GradCAM, GradCAM++, LayerCAM)**
 - **PuzzleCAM**
 - **POF-CAM**
 
