@@ -1,0 +1,26 @@
+seed: 42
+num_workers: 4
+architecture: resnet50
+mode: normal
+batch_size: 32
+max_epoch: 25
+lr: 0.1
+wd: 0.0001
+nesterov: True
+image_size: 512
+print_ratio: 0.1
+augment: colorjitter
+re_loss_option: masking
+re_loss: L1_Loss
+alpha_schedule: 0.0
+glob_alpha: 2.0
+beta_schedule: 0.0
+glob_beta: 6.0
+num_pieces: 4
+loss_option: cl_pcl_re
+imagenet_mean: [0.485, 0.456, 0.406]
+imagenet_std: [0.229, 0.224, 0.225]
+level: feature  # 'feature' or 'cam'
+optimizer: adam  # 'SGD' or 'adam'
+flow_dir: /home/andream99/Thesis/Datasets/SERUSO_DATASETS/new_5000/optical_flows_5000/
+dataset_dir: /home/andream99/Thesis/Datasets/SERUSO_DATASETS/new_5000/three_classes_5000/

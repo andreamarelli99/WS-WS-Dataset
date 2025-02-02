@@ -48,7 +48,7 @@ class POF_CAM_inference(Cam_generator_inference):
         self.eval_timer = Timer()
         self.eval_timer.tik()
 
-        model_path = './experiments/POF-CAM/models/' + f'{self.tag}.pth'
+        model_path = self.tag
 
         # Using regular expression to find the substring
         match = re.search(r'epochs_(.*?)_batch', self.tag)

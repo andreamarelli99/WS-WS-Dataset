@@ -51,7 +51,7 @@ class Std_classifier_inference(Cam_generator_inference):
     
     def set_model(self):
 
-        model_path = './experiments/GradCAM/models/' + f'{self.tag}.pth'
+        model_path = self.tag
 
         # Using regular expression to find the substring
         match = re.search(r'epochs_(.*?)_batch', self.tag)

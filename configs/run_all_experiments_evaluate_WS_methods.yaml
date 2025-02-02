@@ -1,0 +1,16 @@
+seed: 42
+architecture: resnet50
+mode: normal
+image_size: 512
+num_workers: 4
+tag: /home/andream99/Thesis/final_Git/Seruso_dataset/experimentss/POF-CAM/models/POFCAM_seruso_512_no_bg_three_classes_25_epochs_resnet50_batch32_cl_pcl_re_masking_only_lateral_4_pieces_new_dataset_alpha_2.0_0.0__beta_6.0_0.0.pth
+scales: "0.2, 0.5, 1.0, 2.0, 4.0, 6.0"
+model: POF_CAM  # Options: GradCAM, GradCAMPlusPlus, LayerCAM, PuzzleCAM, POF_CAM
+imagenet_mean: [0.485, 0.456, 0.406]
+imagenet_std: [0.229, 0.224, 0.225]
+with_flows: True
+sam_enhance: True
+save_mask: False
+visualize: False
+dataset_dir: '/home/andream99/Thesis/Datasets/SERUSO_DATASETS/test_set'
+classes_subfolders: ['before'] # Options: ['before', 'after'] 
