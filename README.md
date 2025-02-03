@@ -1,4 +1,4 @@
-# WS-WS: Weakly Supervised Waste Sorting Benchmark
+# WS-WS: Weakly Supervised Waste Sorting Segmentation Benchmark
 
 ## Overview
 This repository provides scripts for training and evaluating weakly supervised segmentation models for the Seruso Dataset. It includes implementations for:
